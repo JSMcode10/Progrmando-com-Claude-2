@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSM Store</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .sidebar-link { @apply flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-indigo-700 hover:text-white transition-all cursor-pointer; }
+    .sidebar-link.active { @apply bg-indigo-700 text-white; }
+    .card { @apply bg-white rounded-xl shadow p-6; }
+    .btn-primary { @apply bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg transition; }
+    .btn-secondary { @apply bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg transition; }
+    .btn-danger { @apply bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition; }
+    .btn-success { @apply bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-4 py-2 rounded-lg transition; }
+    .input { @apply w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400; }
+    .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
+    .table-row { @apply border-b border-gray-100 hover:bg-gray-50 transition; }
+    .toast { animation: slide-in 0.3s ease, fade-out 0.3s ease 2.7s forwards; }
+    @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+  </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+<!-- ============================================================
+     LOGIN SCREEN
+     ============================================================ -->
+<div id="login-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">
+  <div class="bg-white rounded-2xl shadow-xl p-10 w-full max-w-md">
+    <div class="text-center mb-8">
+      <div class="text-5xl mb-3">🏪</div>
+      <h1 class="text-3xl font-bold text-indigo-800">JSM Store</h1>
+      <p class="text-gray-500 mt-1">Sistema de Gestão</p>
+    </div>
+    <form id="login-form" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
+        <input id="login-user" type="text" class="input" placeholder="admin" autocomplete="username" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+        <input id="login-pass" type="password" class="input" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <div id="login-error" class="text-red-500 text-sm hidden">Usuário ou senha incorretos.</div>
+      <button type="submit" class="btn-primary w-full py-3 text-base">Entrar</button>
+    </form>
+    <p class="text-center text-xs text-gray-400 mt-6">admin / admin123</p>
+  </div>
+</div>
+
+<!-- ============================================================
+     MAIN APP
+     ============================================================ -->
+<div id="app" class="hidden min-h-screen flex">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="w-64 bg-indigo-900 text-white flex flex-col fixed inset-y-0 left-0 z-30 transition-transform">
+    <div class="p-6 border-b border-indigo-700">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🏪</span>
+        <div>
+          <h1 class="font-bold text-lg leading-none">JSM Store</h1>
+          <p class="text-indigo-300 text-xs">Sistema de Gestão</p>
+        </div>
+      </div>
+    </div>
+    <nav class="flex-1 p-4 space-y-1">
+      <a class="sidebar-link active" data-page="dashboard">
+        <span>📊</span><span>Dashboard</span>
+      </a>
+      <a class="sidebar-link" data-page="products">
+        <span>📦</span><span>Produtos</span>
+      </a>
+      <a class="sidebar-link" data-page="customers">
+        <span>👥</span><span>Clientes</span>
+      </a>
+      <a class="sidebar-link" data-page="sales">
+        <span>🛒</span><span>Vendas</span>
+      </a>
+      <a class="sidebar-link" data-page="finance">
+        <span>💰</span><span>Financeiro</span>
+      </a>
+      <a class="sidebar-link" data-page="backup">
+        <span>💾</span><span>Backup</span>
+      </a>
+    </nav>
+    <div class="p-4 border-t border-indigo-700">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-sm font-bold">A</div>
+        <span class="text-sm text-indigo-200">Administrador</span>
+      </div>
+      <button onclick="logout()" class="w-full text-left text-sm text-indigo-300 hover:text-white flex items-center gap-2 px-2 py-1 rounded hover:bg-indigo-700 transition">
+        <span>🚪</span> Sair
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="ml-64 flex-1 flex flex-col min-h-screen">
+
+    <!-- Top bar -->
+    <header class="bg-white shadow-sm sticky top-0 z-20 px-6 py-4 flex items-center justify-between">
+      <h2 id="page-title" class="text-xl font-bold text-gray-800">Dashboard</h2>
+      <div class="flex items-center gap-3">
+        <div class="relative">
+          <button onclick="toggleNotifications()" class="relative p-2 rounded-full hover:bg-gray-100 transition">
+            🔔
+            <span id="notif-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 items-center justify-center hidden">0</span>
+          </button>
+          <div id="notif-panel" class="hidden absolute right-0 top-10 w-80 bg-white rounded-xl shadow-lg border z-50">
+            <div class="p-4 border-b flex justify-between items-center">
+              <span class="font-semibold">Notificações</span>
+              <button onclick="clearNotifications()" class="text-xs text-indigo-600 hover:underline">Limpar</button>
+            </div>
+            <div id="notif-list" class="max-h-64 overflow-y-auto divide-y">
+              <p class="p-4 text-sm text-gray-400 text-center">Nenhuma notificação</p>
+            </div>
+          </div>
+        </div>
+        <span class="text-sm text-gray-500" id="current-date"></span>
+      </div>
+    </header>
+
+    <!-- Pages -->
+    <main class="flex-1 p-6 space-y-6">
+
+      <!-- ===== DASHBOARD ===== -->
+      <section id="page-dashboard">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="card flex items-center gap-4">
+            <div class="text-3xl bg-indigo-100 p-3 rounded-xl">📦</div>
+            <div><p class="text-sm text-gray-500">Produtos</p><p class="text-2xl font-bold text-indigo-700" id="dash-products">0</p></div>
+          </div>
+          <div class="card flex items-center gap-4">
+            <div class="text-3xl bg-emerald-100 p-3 rounded-xl">👥</div>
+            <div><p class="text-sm text-gray-500">Clientes</p><p class="text-2xl font-bold text-emerald-700" id="dash-customers">0</p></div>
+          </div>
+          <div class="card flex items-center gap-4">
+            <div class="text-3xl bg-blue-100 p-3 rounded-xl">🛒</div>
+            <div><p class="text-sm text-gray-500">Vendas (mês)</p><p class="text-2xl font-bold text-blue-700" id="dash-sales">0</p></div>
+          </div>
+          <div class="card flex items-center gap-4">
+            <div class="text-3xl bg-yellow-100 p-3 rounded-xl">💰</div>
+            <div><p class="text-sm text-gray-500">Receita (mês)</p><p class="text-2xl font-bold text-yellow-700" id="dash-revenue">R$ 0</p></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="card">
+            <h3 class="font-bold text-gray-700 mb-4">Últimas Vendas</h3>
+            <div id="dash-recent-sales" class="space-y-3">
+              <p class="text-sm text-gray-400">Nenhuma venda registrada.</p>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="font-bold text-gray-700 mb-4">Estoque Baixo</h3>
+            <div id="dash-low-stock" class="space-y-3">
+              <p class="text-sm text-gray-400">Todos os produtos OK.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== PRODUCTS ===== -->
+      <section id="page-products" class="hidden">
+        <div class="card">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 class="font-bold text-gray-700 text-lg">Gerenciar Produtos</h3>
+            <button onclick="openModal('modal-product')" class="btn-primary">+ Novo Produto</button>
+          </div>
+          <input type="text" id="product-search" class="input mb-4 max-w-xs" placeholder="Buscar produto..." oninput="renderProducts()" />
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-200 text-gray-500 text-left">
+                  <th class="pb-2 pr-4">Nome</th>
+                  <th class="pb-2 pr-4">Categoria</th>
+                  <th class="pb-2 pr-4">Preço</th>
+                  <th class="pb-2 pr-4">Estoque</th>
+                  <th class="pb-2">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="products-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== CUSTOMERS ===== -->
+      <section id="page-customers" class="hidden">
+        <div class="card">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 class="font-bold text-gray-700 text-lg">Gerenciar Clientes</h3>
+            <button onclick="openModal('modal-customer')" class="btn-primary">+ Novo Cliente</button>
+          </div>
+          <input type="text" id="customer-search" class="input mb-4 max-w-xs" placeholder="Buscar cliente..." oninput="renderCustomers()" />
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-200 text-gray-500 text-left">
+                  <th class="pb-2 pr-4">Nome</th>
+                  <th class="pb-2 pr-4">Email</th>
+                  <th class="pb-2 pr-4">Telefone</th>
+                  <th class="pb-2 pr-4">Compras</th>
+                  <th class="pb-2">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="customers-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== SALES ===== -->
+      <section id="page-sales" class="hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <!-- New sale form -->
+          <div class="card lg:col-span-1">
+            <h3 class="font-bold text-gray-700 mb-4">Nova Venda</h3>
+            <div class="space-y-3">
+              <div>
+                <label class="text-sm font-medium text-gray-600 mb-1 block">Cliente</label>
+                <select id="sale-customer" class="input">
+                  <option value="">Selecionar cliente...</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-sm font-medium text-gray-600 mb-1 block">Produto</label>
+                <select id="sale-product" class="input" onchange="updateSalePrice()">
+                  <option value="">Selecionar produto...</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-sm font-medium text-gray-600 mb-1 block">Quantidade</label>
+                <input type="number" id="sale-qty" class="input" min="1" value="1" oninput="updateSaleTotal()" />
+              </div>
+              <div>
+                <label class="text-sm font-medium text-gray-600 mb-1 block">Preço Unit.</label>
+                <input type="number" id="sale-price" class="input" min="0" step="0.01" oninput="updateSaleTotal()" />
+              </div>
+              <div>
+                <label class="text-sm font-medium text-gray-600 mb-1 block">Forma de Pagamento</label>
+                <select id="sale-payment" class="input">
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="cartao_credito">Cartão de Crédito</option>
+                  <option value="cartao_debito">Cartão de Débito</option>
+                  <option value="pix">PIX</option>
+                </select>
+              </div>
+              <div class="bg-indigo-50 rounded-lg p-3">
+                <p class="text-sm text-gray-600">Total</p>
+                <p class="text-2xl font-bold text-indigo-700" id="sale-total">R$ 0,00</p>
+              </div>
+              <button onclick="registerSale()" class="btn-success w-full">Registrar Venda</button>
+            </div>
+          </div>
+
+          <!-- Sales list -->
+          <div class="card lg:col-span-2">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-gray-700 text-lg">Histórico de Vendas</h3>
+              <input type="month" id="sales-filter-month" class="input max-w-[150px]" onchange="renderSales()" />
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-gray-200 text-gray-500 text-left">
+                    <th class="pb-2 pr-4">Data</th>
+                    <th class="pb-2 pr-4">Produto</th>
+                    <th class="pb-2 pr-4">Cliente</th>
+                    <th class="pb-2 pr-4">Total</th>
+                    <th class="pb-2">Pagamento</th>
+                  </tr>
+                </thead>
+                <tbody id="sales-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== FINANCE ===== -->
+      <section id="page-finance" class="hidden">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          <div class="card text-center">
+            <p class="text-sm text-gray-500 mb-1">Receita Total</p>
+            <p class="text-2xl font-bold text-emerald-600" id="fin-revenue">R$ 0,00</p>
+          </div>
+          <div class="card text-center">
+            <p class="text-sm text-gray-500 mb-1">Despesas Total</p>
+            <p class="text-2xl font-bold text-red-500" id="fin-expenses">R$ 0,00</p>
+          </div>
+          <div class="card text-center">
+            <p class="text-sm text-gray-500 mb-1">Lucro Líquido</p>
+            <p class="text-2xl font-bold text-indigo-700" id="fin-profit">R$ 0,00</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="card">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-gray-700">Lançamentos</h3>
+              <button onclick="openModal('modal-finance')" class="btn-primary text-sm">+ Novo</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-gray-200 text-gray-500 text-left">
+                    <th class="pb-2 pr-4">Data</th>
+                    <th class="pb-2 pr-4">Descrição</th>
+                    <th class="pb-2 pr-4">Tipo</th>
+                    <th class="pb-2 pr-4">Valor</th>
+                    <th class="pb-2">Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="finance-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="font-bold text-gray-700 mb-4">Resumo por Categoria</h3>
+            <div id="finance-summary" class="space-y-3"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== BACKUP ===== -->
+      <section id="page-backup" class="hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="card">
+            <h3 class="font-bold text-gray-700 mb-2">Exportar Dados</h3>
+            <p class="text-sm text-gray-500 mb-4">Faça o download de todos os dados do sistema em formato JSON.</p>
+            <button onclick="exportData()" class="btn-primary w-full">⬇️ Exportar Backup</button>
+          </div>
+          <div class="card">
+            <h3 class="font-bold text-gray-700 mb-2">Importar Dados</h3>
+            <p class="text-sm text-gray-500 mb-4">Restaure dados a partir de um arquivo de backup JSON.</p>
+            <label class="btn-secondary w-full block text-center cursor-pointer">
+              ⬆️ Importar Backup
+              <input type="file" accept=".json" onchange="importData(event)" class="hidden" />
+            </label>
+          </div>
+          <div class="card">
+            <h3 class="font-bold text-gray-700 mb-2">Limpar Dados</h3>
+            <p class="text-sm text-gray-500 mb-4">Remove todos os dados do sistema (irreversível).</p>
+            <button onclick="confirmClearData()" class="btn-danger w-full">🗑️ Limpar Tudo</button>
+          </div>
+          <div class="card">
+            <h3 class="font-bold text-gray-700 mb-2">Informações do Sistema</h3>
+            <div id="backup-info" class="space-y-2 text-sm text-gray-600"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+
+<!-- Product Modal -->
+<div id="modal-product" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <h3 id="modal-product-title" class="text-lg font-bold mb-4">Novo Produto</h3>
+    <form id="form-product" class="space-y-3" onsubmit="saveProduct(event)">
+      <input type="hidden" id="product-id" />
+      <div>
+        <label class="text-sm font-medium text-gray-600 mb-1 block">Nome *</label>
+        <input id="product-name" class="input" required />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-600 mb-1 block">Categoria</label>
+        <input id="product-category" class="input" placeholder="Ex: Eletrônicos, Roupas..." />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm font-medium text-gray-600 mb-1 block">Preço (R$) *</label>
+          <input id="product-price" type="number" step="0.01" min="0" class="input" required />
+        </div>
+        <div>
+          <label class="text-sm font-medium text-gray-600 mb-1 block">Estoque *</label>
+          <input id="product-stock" type="number" min="0" class="input" required />
+        </div>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-600 mb-1 block">Estoque Mínimo</label>
+        <input id="product-min-stock" type="number" min="0" value="5" class="input" />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-600 mb-1 block">Descrição</label>
+        <textarea id="product-desc" class="input" rows="2"></textarea>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button type="submit" class="btn-primary flex-1">Salvar</button>
+        <button type="button" onclick="closeModal('modal-product')" class="btn-secondary flex-1">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Customer Modal -->
+<div id="modal-customer" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <h3 id="modal-customer-title" class="text-lg font-bold mb-4">Novo Cliente</h3>
+    <form id="form-customer" class="space-y-3" onsubmit="saveCustomer(event)">
+      <input type="hidden" id="customer-id" />
+      <div>
+        <label class="text-sm font-medium text-gray-600 mb-1 block">Nome *</label>
+        <input id="customer-name" class="input" required />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-600 mb-1 block">Email</label>
+        <input id="customer-email" type="email" class="input" />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-600 mb-1 block">Telefone</label>
+        <input id="customer-phone" class="input" placeholder="(11) 99999-9999" />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-600 mb-1 block">Endereço</label>
+        <input id="customer-address" class="input" />
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button type="submit" class="btn-primary flex-1">Salvar</button>
+        <button type="button" onclick="closeModal('modal-customer')" class="btn-secondary flex-1">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Finance Modal -->
+<div id="modal-finance" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <h3 class="text-lg font-bold mb-4">Novo Lançamento</h3>
+    <form id="form-finance" class="space-y-3" onsubmit="saveFinance(event)">
+      <div>
+        <label class="text-sm font-medium text-gray-600 mb-1 block">Tipo</label>
+        <select id="finance-type" class="input">
+          <option value="receita">Receita</option>
+          <option value="despesa">Despesa</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-600 mb-1 block">Descrição *</label>
+        <input id="finance-desc" class="input" required />
+      </div>
+      <div>
+        <label class="text-sm font-medium text-gray-600 mb-1 block">Categoria</label>
+        <input id="finance-cat" class="input" placeholder="Ex: Aluguel, Fornecedor..." />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm font-medium text-gray-600 mb-1 block">Valor (R$) *</label>
+          <input id="finance-value" type="number" step="0.01" min="0" class="input" required />
+        </div>
+        <div>
+          <label class="text-sm font-medium text-gray-600 mb-1 block">Data</label>
+          <input id="finance-date" type="date" class="input" />
+        </div>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button type="submit" class="btn-primary flex-1">Salvar</button>
+        <button type="button" onclick="closeModal('modal-finance')" class="btn-secondary flex-1">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="modal-confirm" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
+    <div class="text-4xl mb-3" id="confirm-icon">⚠️</div>
+    <h3 class="text-lg font-bold mb-2" id="confirm-title">Confirmar</h3>
+    <p class="text-gray-500 text-sm mb-6" id="confirm-message">Tem certeza?</p>
+    <div class="flex gap-3">
+      <button id="confirm-ok" class="btn-danger flex-1">Confirmar</button>
+      <button onclick="closeModal('modal-confirm')" class="btn-secondary flex-1">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+// ── State ─────────────────────────────────────────────────────
+const STORAGE_KEY = 'jsm_store_data';
+let state = {
+  products: [],
+  customers: [],
+  sales: [],
+  finances: [],
+  notifications: [],
+};
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) state = { ...state, ...JSON.parse(saved) };
+  } catch {}
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+// ── Auth ───────────────────────────────────────────────────────
+const USERS = [{ user: 'admin', pass: 'admin123' }];
+
+document.getElementById('login-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  if (USERS.some(x => x.user === u && x.pass === p)) {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('app').classList.add('flex');
+    initApp();
+  } else {
+    document.getElementById('login-error').classList.remove('hidden');
+  }
+});
+
+function logout() {
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('app').classList.remove('flex');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+}
+
+// ── Init ───────────────────────────────────────────────────────
+function initApp() {
+  loadState();
+  document.getElementById('current-date').textContent = new Date().toLocaleDateString('pt-BR', {
+    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
+  });
+  // Set default month filter
+  const now = new Date();
+  document.getElementById('sales-filter-month').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  // Default finance date
+  document.getElementById('finance-date').value = new Date().toISOString().split('T')[0];
+  navigateTo('dashboard');
+  checkLowStock();
+}
+
+// ── Navigation ─────────────────────────────────────────────────
+const PAGE_TITLES = {
+  dashboard: 'Dashboard', products: 'Produtos', customers: 'Clientes',
+  sales: 'Vendas', finance: 'Financeiro', backup: 'Backup',
+};
+
+function navigateTo(page) {
+  document.querySelectorAll('[id^="page-"]').forEach(el => el.classList.add('hidden'));
+  document.getElementById('page-' + page).classList.remove('hidden');
+  document.getElementById('page-title').textContent = PAGE_TITLES[page];
+  document.querySelectorAll('.sidebar-link').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'products') renderProducts();
+  if (page === 'customers') renderCustomers();
+  if (page === 'sales') { populateSaleSelects(); renderSales(); }
+  if (page === 'finance') renderFinance();
+  if (page === 'backup') renderBackupInfo();
+}
+
+document.querySelectorAll('.sidebar-link').forEach(el => {
+  el.addEventListener('click', () => navigateTo(el.dataset.page));
+});
+
+// ── Helpers ────────────────────────────────────────────────────
+function fmt(val) {
+  return 'R$ ' + Number(val).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('pt-BR');
+}
+
+// ── Toast ──────────────────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const colors = { success: 'bg-emerald-500', error: 'bg-red-500', info: 'bg-indigo-500', warning: 'bg-yellow-500' };
+  const el = document.createElement('div');
+  el.className = `toast pointer-events-auto ${colors[type]} text-white px-4 py-3 rounded-xl shadow-lg text-sm max-w-xs`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3100);
+
+  addNotification(msg, type);
+}
+
+// ── Notifications ──────────────────────────────────────────────
+function addNotification(msg, type = 'info') {
+  state.notifications.unshift({ id: uid(), msg, type, time: new Date().toISOString() });
+  if (state.notifications.length > 30) state.notifications.pop();
+  updateNotifBadge();
+  saveState();
+}
+
+function updateNotifBadge() {
+  const badge = document.getElementById('notif-badge');
+  const count = state.notifications.length;
+  badge.textContent = count > 9 ? '9+' : count;
+  badge.classList.toggle('hidden', count === 0);
+  badge.classList.toggle('flex', count > 0);
+}
+
+function toggleNotifications() {
+  document.getElementById('notif-panel').classList.toggle('hidden');
+  renderNotifications();
+}
+
+function renderNotifications() {
+  const list = document.getElementById('notif-list');
+  if (!state.notifications.length) {
+    list.innerHTML = '<p class="p-4 text-sm text-gray-400 text-center">Nenhuma notificação</p>';
+    return;
+  }
+  list.innerHTML = state.notifications.map(n => `
+    <div class="p-3">
+      <p class="text-sm text-gray-700">${n.msg}</p>
+      <p class="text-xs text-gray-400 mt-0.5">${fmtDate(n.time)}</p>
+    </div>
+  `).join('');
+}
+
+function clearNotifications() {
+  state.notifications = [];
+  updateNotifBadge();
+  renderNotifications();
+  saveState();
+}
+
+document.addEventListener('click', e => {
+  const panel = document.getElementById('notif-panel');
+  if (!panel.contains(e.target) && !e.target.closest('button[onclick="toggleNotifications()"]')) {
+    panel.classList.add('hidden');
+  }
+});
+
+// ── Modals ─────────────────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.remove('hidden');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+function confirm(title, message, icon, onOk) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-message').textContent = message;
+  document.getElementById('confirm-icon').textContent = icon;
+  const btn = document.getElementById('confirm-ok');
+  btn.onclick = () => { onOk(); closeModal('modal-confirm'); };
+  openModal('modal-confirm');
+}
+
+// ── PRODUCTS ───────────────────────────────────────────────────
+function renderProducts() {
+  const q = (document.getElementById('product-search').value || '').toLowerCase();
+  const rows = state.products
+    .filter(p => p.name.toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q))
+    .map(p => {
+      const stockColor = p.stock <= (p.minStock || 5)
+        ? 'badge bg-red-100 text-red-700' : 'badge bg-emerald-100 text-emerald-700';
+      return `
+        <tr class="table-row">
+          <td class="py-2 pr-4 font-medium">${p.name}</td>
+          <td class="py-2 pr-4 text-gray-500">${p.category || '—'}</td>
+          <td class="py-2 pr-4">${fmt(p.price)}</td>
+          <td class="py-2 pr-4"><span class="${stockColor}">${p.stock}</span></td>
+          <td class="py-2">
+            <button onclick="editProduct('${p.id}')" class="text-indigo-600 hover:underline text-xs mr-2">Editar</button>
+            <button onclick="deleteProduct('${p.id}')" class="text-red-500 hover:underline text-xs">Excluir</button>
+          </td>
+        </tr>`;
+    }).join('');
+  document.getElementById('products-tbody').innerHTML = rows || '<tr><td colspan="5" class="py-4 text-center text-gray-400">Nenhum produto cadastrado.</td></tr>';
+}
+
+function openProductModal(p = null) {
+  document.getElementById('product-id').value = p ? p.id : '';
+  document.getElementById('product-name').value = p ? p.name : '';
+  document.getElementById('product-category').value = p ? (p.category || '') : '';
+  document.getElementById('product-price').value = p ? p.price : '';
+  document.getElementById('product-stock').value = p ? p.stock : '';
+  document.getElementById('product-min-stock').value = p ? (p.minStock || 5) : 5;
+  document.getElementById('product-desc').value = p ? (p.desc || '') : '';
+  document.getElementById('modal-product-title').textContent = p ? 'Editar Produto' : 'Novo Produto';
+  openModal('modal-product');
+}
+
+function editProduct(id) {
+  openProductModal(state.products.find(p => p.id === id));
+}
+
+function saveProduct(e) {
+  e.preventDefault();
+  const id = document.getElementById('product-id').value;
+  const data = {
+    id: id || uid(),
+    name: document.getElementById('product-name').value.trim(),
+    category: document.getElementById('product-category').value.trim(),
+    price: parseFloat(document.getElementById('product-price').value),
+    stock: parseInt(document.getElementById('product-stock').value),
+    minStock: parseInt(document.getElementById('product-min-stock').value) || 5,
+    desc: document.getElementById('product-desc').value.trim(),
+  };
+  if (id) {
+    state.products = state.products.map(p => p.id === id ? data : p);
+    toast('Produto atualizado!');
+  } else {
+    state.products.push(data);
+    toast('Produto cadastrado!');
+  }
+  saveState();
+  closeModal('modal-product');
+  renderProducts();
+  checkLowStock();
+}
+
+function deleteProduct(id) {
+  const p = state.products.find(x => x.id === id);
+  confirm('Excluir Produto', `Deseja excluir "${p.name}"?`, '🗑️', () => {
+    state.products = state.products.filter(x => x.id !== id);
+    saveState();
+    renderProducts();
+    toast('Produto removido.', 'info');
+  });
+}
+
+document.getElementById('modal-product').querySelector('[onclick="openModal(\'modal-product\')"]');
+document.querySelectorAll('[onclick="openModal(\'modal-product\')"]').forEach(b => {
+  b.addEventListener('click', () => openProductModal());
+});
+
+// ── CUSTOMERS ──────────────────────────────────────────────────
+function renderCustomers() {
+  const q = (document.getElementById('customer-search').value || '').toLowerCase();
+  const rows = state.customers
+    .filter(c => c.name.toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q))
+    .map(c => {
+      const purchases = state.sales.filter(s => s.customerId === c.id).length;
+      return `
+        <tr class="table-row">
+          <td class="py-2 pr-4 font-medium">${c.name}</td>
+          <td class="py-2 pr-4 text-gray-500">${c.email || '—'}</td>
+          <td class="py-2 pr-4 text-gray-500">${c.phone || '—'}</td>
+          <td class="py-2 pr-4">${purchases}</td>
+          <td class="py-2">
+            <button onclick="editCustomer('${c.id}')" class="text-indigo-600 hover:underline text-xs mr-2">Editar</button>
+            <button onclick="deleteCustomer('${c.id}')" class="text-red-500 hover:underline text-xs">Excluir</button>
+          </td>
+        </tr>`;
+    }).join('');
+  document.getElementById('customers-tbody').innerHTML = rows || '<tr><td colspan="5" class="py-4 text-center text-gray-400">Nenhum cliente cadastrado.</td></tr>';
+}
+
+function openCustomerModal(c = null) {
+  document.getElementById('customer-id').value = c ? c.id : '';
+  document.getElementById('customer-name').value = c ? c.name : '';
+  document.getElementById('customer-email').value = c ? (c.email || '') : '';
+  document.getElementById('customer-phone').value = c ? (c.phone || '') : '';
+  document.getElementById('customer-address').value = c ? (c.address || '') : '';
+  document.getElementById('modal-customer-title').textContent = c ? 'Editar Cliente' : 'Novo Cliente';
+  openModal('modal-customer');
+}
+
+function editCustomer(id) {
+  openCustomerModal(state.customers.find(c => c.id === id));
+}
+
+function saveCustomer(e) {
+  e.preventDefault();
+  const id = document.getElementById('customer-id').value;
+  const data = {
+    id: id || uid(),
+    name: document.getElementById('customer-name').value.trim(),
+    email: document.getElementById('customer-email').value.trim(),
+    phone: document.getElementById('customer-phone').value.trim(),
+    address: document.getElementById('customer-address').value.trim(),
+  };
+  if (id) {
+    state.customers = state.customers.map(c => c.id === id ? data : c);
+    toast('Cliente atualizado!');
+  } else {
+    state.customers.push(data);
+    toast('Cliente cadastrado!');
+  }
+  saveState();
+  closeModal('modal-customer');
+  renderCustomers();
+}
+
+function deleteCustomer(id) {
+  const c = state.customers.find(x => x.id === id);
+  confirm('Excluir Cliente', `Deseja excluir "${c.name}"?`, '🗑️', () => {
+    state.customers = state.customers.filter(x => x.id !== id);
+    saveState();
+    renderCustomers();
+    toast('Cliente removido.', 'info');
+  });
+}
+
+document.querySelectorAll('[onclick="openModal(\'modal-customer\')"]').forEach(b => {
+  b.addEventListener('click', () => openCustomerModal());
+});
+
+// ── SALES ─────────────────────────────────────────────────────
+function populateSaleSelects() {
+  const cSel = document.getElementById('sale-customer');
+  const pSel = document.getElementById('sale-product');
+  cSel.innerHTML = '<option value="">Selecionar cliente...</option>' +
+    state.customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  pSel.innerHTML = '<option value="">Selecionar produto...</option>' +
+    state.products.map(p => `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${p.name} (Estoque: ${p.stock})</option>`).join('');
+}
+
+function updateSalePrice() {
+  const sel = document.getElementById('sale-product');
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('sale-price').value = opt.dataset.price || '';
+  updateSaleTotal();
+}
+
+function updateSaleTotal() {
+  const qty = parseFloat(document.getElementById('sale-qty').value) || 0;
+  const price = parseFloat(document.getElementById('sale-price').value) || 0;
+  document.getElementById('sale-total').textContent = fmt(qty * price);
+}
+
+function registerSale() {
+  const customerId = document.getElementById('sale-customer').value;
+  const productId = document.getElementById('sale-product').value;
+  const qty = parseInt(document.getElementById('sale-qty').value);
+  const price = parseFloat(document.getElementById('sale-price').value);
+  const payment = document.getElementById('sale-payment').value;
+
+  if (!productId) return toast('Selecione um produto.', 'error');
+  if (!qty || qty < 1) return toast('Quantidade inválida.', 'error');
+  if (!price || price <= 0) return toast('Preço inválido.', 'error');
+
+  const product = state.products.find(p => p.id === productId);
+  if (product.stock < qty) return toast(`Estoque insuficiente. Disponível: ${product.stock}`, 'error');
+
+  const sale = {
+    id: uid(),
+    productId,
+    productName: product.name,
+    customerId: customerId || null,
+    customerName: customerId ? state.customers.find(c => c.id === customerId)?.name : 'Sem cliente',
+    qty,
+    price,
+    total: qty * price,
+    payment,
+    date: new Date().toISOString(),
+  };
+
+  state.sales.push(sale);
+  product.stock -= qty;
+
+  // Auto-record revenue in finances
+  state.finances.push({
+    id: uid(),
+    type: 'receita',
+    desc: `Venda: ${product.name}`,
+    category: 'Vendas',
+    value: sale.total,
+    date: new Date().toISOString().split('T')[0],
+  });
+
+  saveState();
+  toast(`Venda registrada! ${fmt(sale.total)}`, 'success');
+  renderSales();
+  populateSaleSelects();
+  document.getElementById('sale-qty').value = 1;
+  document.getElementById('sale-price').value = '';
+  document.getElementById('sale-total').textContent = 'R$ 0,00';
+  document.getElementById('sale-product').value = '';
+  checkLowStock();
+}
+
+function renderSales() {
+  const filterMonth = document.getElementById('sales-filter-month').value;
+  const filtered = filterMonth
+    ? state.sales.filter(s => s.date.startsWith(filterMonth))
+    : state.sales;
+  const sorted = [...filtered].reverse();
+  const payLabels = { dinheiro: 'Dinheiro', cartao_credito: 'Crédito', cartao_debito: 'Débito', pix: 'PIX' };
+
+  document.getElementById('sales-tbody').innerHTML = sorted.length
+    ? sorted.map(s => `
+        <tr class="table-row">
+          <td class="py-2 pr-4 text-gray-500 text-xs">${fmtDate(s.date)}</td>
+          <td class="py-2 pr-4 font-medium">${s.productName}</td>
+          <td class="py-2 pr-4 text-gray-500">${s.customerName || '—'}</td>
+          <td class="py-2 pr-4 font-semibold text-emerald-700">${fmt(s.total)}</td>
+          <td class="py-2"><span class="badge bg-blue-100 text-blue-700">${payLabels[s.payment] || s.payment}</span></td>
+        </tr>`).join('')
+    : '<tr><td colspan="5" class="py-4 text-center text-gray-400">Nenhuma venda no período.</td></tr>';
+}
+
+// ── FINANCE ────────────────────────────────────────────────────
+function saveFinance(e) {
+  e.preventDefault();
+  const data = {
+    id: uid(),
+    type: document.getElementById('finance-type').value,
+    desc: document.getElementById('finance-desc').value.trim(),
+    category: document.getElementById('finance-cat').value.trim() || 'Geral',
+    value: parseFloat(document.getElementById('finance-value').value),
+    date: document.getElementById('finance-date').value || new Date().toISOString().split('T')[0],
+  };
+  state.finances.push(data);
+  saveState();
+  closeModal('modal-finance');
+  toast('Lançamento registrado!');
+  document.getElementById('form-finance').reset();
+  document.getElementById('finance-date').value = new Date().toISOString().split('T')[0];
+  renderFinance();
+}
+
+function deleteFinance(id) {
+  confirm('Excluir Lançamento', 'Deseja remover este lançamento?', '🗑️', () => {
+    state.finances = state.finances.filter(f => f.id !== id);
+    saveState();
+    renderFinance();
+    toast('Lançamento removido.', 'info');
+  });
+}
+
+function renderFinance() {
+  const revenue = state.finances.filter(f => f.type === 'receita').reduce((a, f) => a + f.value, 0);
+  const expenses = state.finances.filter(f => f.type === 'despesa').reduce((a, f) => a + f.value, 0);
+  document.getElementById('fin-revenue').textContent = fmt(revenue);
+  document.getElementById('fin-expenses').textContent = fmt(expenses);
+  document.getElementById('fin-profit').textContent = fmt(revenue - expenses);
+
+  const sorted = [...state.finances].sort((a, b) => b.date.localeCompare(a.date));
+  document.getElementById('finance-tbody').innerHTML = sorted.length
+    ? sorted.map(f => `
+        <tr class="table-row">
+          <td class="py-2 pr-4 text-xs text-gray-500">${f.date}</td>
+          <td class="py-2 pr-4">${f.desc}</td>
+          <td class="py-2 pr-4">
+            <span class="badge ${f.type === 'receita' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+              ${f.type}
+            </span>
+          </td>
+          <td class="py-2 pr-4 font-semibold ${f.type === 'receita' ? 'text-emerald-700' : 'text-red-600'}">${fmt(f.value)}</td>
+          <td class="py-2">
+            <button onclick="deleteFinance('${f.id}')" class="text-red-400 hover:text-red-600 text-xs">✕</button>
+          </td>
+        </tr>`).join('')
+    : '<tr><td colspan="5" class="py-4 text-center text-gray-400">Nenhum lançamento.</td></tr>';
+
+  // Summary by category
+  const cats = {};
+  state.finances.forEach(f => {
+    if (!cats[f.category]) cats[f.category] = { r: 0, d: 0 };
+    if (f.type === 'receita') cats[f.category].r += f.value;
+    else cats[f.category].d += f.value;
+  });
+  document.getElementById('finance-summary').innerHTML = Object.keys(cats).length
+    ? Object.entries(cats).map(([cat, v]) => `
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+          <span class="font-medium text-sm">${cat}</span>
+          <div class="text-right text-xs">
+            ${v.r > 0 ? `<span class="text-emerald-600">+${fmt(v.r)}</span>` : ''}
+            ${v.d > 0 ? `<span class="text-red-500 ml-1">-${fmt(v.d)}</span>` : ''}
+          </div>
+        </div>`).join('')
+    : '<p class="text-sm text-gray-400">Sem dados.</p>';
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+function renderDashboard() {
+  document.getElementById('dash-products').textContent = state.products.length;
+  document.getElementById('dash-customers').textContent = state.customers.length;
+
+  const now = new Date();
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthlySales = state.sales.filter(s => s.date.startsWith(monthKey));
+  const monthlyRevenue = monthlySales.reduce((a, s) => a + s.total, 0);
+
+  document.getElementById('dash-sales').textContent = monthlySales.length;
+  document.getElementById('dash-revenue').textContent = fmt(monthlyRevenue);
+
+  // Recent sales
+  const recentSales = [...state.sales].reverse().slice(0, 5);
+  document.getElementById('dash-recent-sales').innerHTML = recentSales.length
+    ? recentSales.map(s => `
+        <div class="flex justify-between items-center text-sm">
+          <div>
+            <p class="font-medium">${s.productName}</p>
+            <p class="text-xs text-gray-400">${s.customerName || '—'} · ${fmtDate(s.date)}</p>
+          </div>
+          <span class="font-semibold text-emerald-700">${fmt(s.total)}</span>
+        </div>`).join('')
+    : '<p class="text-sm text-gray-400">Nenhuma venda registrada.</p>';
+
+  // Low stock
+  const low = state.products.filter(p => p.stock <= (p.minStock || 5));
+  document.getElementById('dash-low-stock').innerHTML = low.length
+    ? low.map(p => `
+        <div class="flex justify-between items-center text-sm">
+          <span class="font-medium">${p.name}</span>
+          <span class="badge bg-red-100 text-red-700">Estoque: ${p.stock}</span>
+        </div>`).join('')
+    : '<p class="text-sm text-gray-400">Todos os produtos OK.</p>';
+}
+
+// ── LOW STOCK CHECK ────────────────────────────────────────────
+function checkLowStock() {
+  const low = state.products.filter(p => p.stock <= (p.minStock || 5));
+  low.forEach(p => {
+    const already = state.notifications.some(n => n.msg.includes(p.name) && n.msg.includes('estoque'));
+    if (!already) addNotification(`⚠️ Estoque baixo: ${p.name} (${p.stock} restantes)`, 'warning');
+  });
+  updateNotifBadge();
+}
+
+// ── BACKUP ────────────────────────────────────────────────────
+function exportData() {
+  const json = JSON.stringify(state, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `jsm_store_backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup exportado com sucesso!');
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      confirm('Importar Backup', 'Isso substituirá todos os dados atuais. Continuar?', '⚠️', () => {
+        state = { ...state, ...imported };
+        saveState();
+        toast('Dados importados com sucesso!');
+        renderBackupInfo();
+      });
+    } catch {
+      toast('Arquivo inválido.', 'error');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function confirmClearData() {
+  confirm('Limpar Todos os Dados', 'Esta ação é irreversível e removerá produtos, clientes, vendas e finanças.', '⚠️', () => {
+    state = { products: [], customers: [], sales: [], finances: [], notifications: [] };
+    saveState();
+    toast('Todos os dados foram removidos.', 'warning');
+    renderBackupInfo();
+    renderDashboard();
+  });
+}
+
+function renderBackupInfo() {
+  const size = JSON.stringify(state).length;
+  document.getElementById('backup-info').innerHTML = `
+    <div class="flex justify-between"><span>Produtos:</span><strong>${state.products.length}</strong></div>
+    <div class="flex justify-between"><span>Clientes:</span><strong>${state.customers.length}</strong></div>
+    <div class="flex justify-between"><span>Vendas:</span><strong>${state.sales.length}</strong></div>
+    <div class="flex justify-between"><span>Finanças:</span><strong>${state.finances.length}</strong></div>
+    <div class="flex justify-between"><span>Tamanho:</span><strong>${(size / 1024).toFixed(1)} KB</strong></div>
+    <div class="flex justify-between"><span>Última atualização:</span><strong>${new Date().toLocaleTimeString('pt-BR')}</strong></div>
+  `;
+}
+</script>
+</body>
+</html>
