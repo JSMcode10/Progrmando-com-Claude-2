@@ -5,21 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JSM Store</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <style>
     [x-cloak] { display: none !important; }
-    .sidebar-link { @apply flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-indigo-700 hover:text-white transition-all cursor-pointer; }
-    .sidebar-link.active { @apply bg-indigo-700 text-white; }
-    .card { @apply bg-white rounded-xl shadow p-6; }
-    .btn-primary { @apply bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg transition; }
-    .btn-secondary { @apply bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded-lg transition; }
-    .btn-danger { @apply bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition; }
-    .btn-success { @apply bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-4 py-2 rounded-lg transition; }
-    .input { @apply w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400; }
-    .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
-    .table-row { @apply border-b border-gray-100 hover:bg-gray-50 transition; }
+    .sidebar-link { display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; border-radius:0.5rem; color:#d1d5db; transition:all 0.15s; cursor:pointer; }
+    .sidebar-link:hover { background:#4338ca; color:#fff; }
+    .sidebar-link.active { background:#4338ca; color:#fff; }
+    .card { background:#fff; border-radius:0.75rem; box-shadow:0 1px 3px rgba(0,0,0,0.1); padding:1.5rem; }
+    .btn-primary { background:#4f46e5; color:#fff; font-weight:600; padding:0.5rem 1rem; border-radius:0.5rem; transition:background 0.15s; border:none; cursor:pointer; }
+    .btn-primary:hover { background:#4338ca; }
+    .btn-secondary { background:#f3f4f6; color:#374151; font-weight:600; padding:0.5rem 1rem; border-radius:0.5rem; transition:background 0.15s; border:none; cursor:pointer; }
+    .btn-secondary:hover { background:#e5e7eb; }
+    .btn-danger { background:#ef4444; color:#fff; font-weight:600; padding:0.5rem 1rem; border-radius:0.5rem; transition:background 0.15s; border:none; cursor:pointer; }
+    .btn-danger:hover { background:#dc2626; }
+    .btn-success { background:#10b981; color:#fff; font-weight:600; padding:0.5rem 1rem; border-radius:0.5rem; transition:background 0.15s; border:none; cursor:pointer; }
+    .btn-success:hover { background:#059669; }
+    .btn-warning { background:#f59e0b; color:#fff; font-weight:600; padding:0.5rem 1rem; border-radius:0.5rem; transition:background 0.15s; border:none; cursor:pointer; }
+    .btn-warning:hover { background:#d97706; }
+    .input { width:100%; border:1px solid #d1d5db; border-radius:0.5rem; padding:0.5rem 0.75rem; outline:none; transition:box-shadow 0.15s; }
+    .input:focus { box-shadow:0 0 0 2px #a5b4fc; }
+    .badge { display:inline-flex; align-items:center; padding:0.125rem 0.5rem; border-radius:9999px; font-size:0.75rem; font-weight:500; }
+    .table-row { border-bottom:1px solid #f3f4f6; transition:background 0.1s; }
+    .table-row:hover { background:#f9fafb; }
     .toast { animation: slide-in 0.3s ease, fade-out 0.3s ease 2.7s forwards; }
     @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+    .screen { display:none; }
+    .screen.active { display:flex; }
+    #app { display:none; }
+    #app.active { display:flex; }
   </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -27,47 +41,247 @@
 <!-- ============================================================
      TOAST CONTAINER
      ============================================================ -->
-<div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+<div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none"></div>
 
 <!-- ============================================================
-     LOGIN SCREEN
+     SCREEN: LOGIN
      ============================================================ -->
-<div id="login-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">
+<div id="screen-login" class="screen min-h-screen items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">
   <div class="bg-white rounded-2xl shadow-xl p-10 w-full max-w-md">
     <div class="text-center mb-8">
       <div class="text-5xl mb-3">🏪</div>
       <h1 class="text-3xl font-bold text-indigo-800">JSM Store</h1>
-      <p class="text-gray-500 mt-1">Sistema de Gestão</p>
+      <p class="text-gray-500 mt-1">Sistema de Gestão SaaS</p>
     </div>
-    <form id="login-form" class="space-y-4">
+    <form id="login-form" class="space-y-4" onsubmit="doLogin(event)">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
-        <input id="login-user" type="text" class="input" placeholder="admin" autocomplete="username" />
+        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+        <input id="login-email" type="email" class="input" placeholder="seu@email.com" autocomplete="username" required />
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-        <input id="login-pass" type="password" class="input" placeholder="••••••••" autocomplete="current-password" />
+        <input id="login-pass" type="password" class="input" placeholder="••••••••" autocomplete="current-password" required />
       </div>
-      <div id="login-error" class="text-red-500 text-sm hidden">Usuário ou senha incorretos.</div>
+      <div id="login-error" class="text-red-500 text-sm hidden">Email ou senha incorretos.</div>
       <button type="submit" class="btn-primary w-full py-3 text-base">Entrar</button>
     </form>
-    <p class="text-center text-xs text-gray-400 mt-6">admin / admin123</p>
+    <div class="mt-4 flex flex-col gap-2 text-center text-sm">
+      <a href="#" onclick="showScreen('register')" class="text-indigo-600 hover:underline">Criar conta gratuita (7 dias grátis)</a>
+      <a href="#" onclick="showScreen('forgot')" class="text-gray-500 hover:underline">Esqueci minha senha</a>
+      <a href="#" onclick="showScreen('admin-login')" class="text-xs text-gray-400 hover:underline mt-2">Acesso Super Admin</a>
+    </div>
   </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: REGISTER
+     ============================================================ -->
+<div id="screen-register" class="screen min-h-screen items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">
+  <div class="bg-white rounded-2xl shadow-xl p-10 w-full max-w-md">
+    <div class="text-center mb-6">
+      <div class="text-4xl mb-2">🚀</div>
+      <h1 class="text-2xl font-bold text-indigo-800">Criar Conta</h1>
+      <p class="text-gray-500 text-sm mt-1">7 dias grátis, sem cartão de crédito</p>
+    </div>
+    <form class="space-y-3" onsubmit="doRegister(event)">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Seu Nome *</label>
+        <input id="reg-name" class="input" placeholder="João Silva" required />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+        <input id="reg-email" type="email" class="input" placeholder="seu@email.com" required />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Senha *</label>
+        <input id="reg-pass" type="password" class="input" placeholder="mínimo 6 caracteres" minlength="6" required />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Nome da Loja *</label>
+        <input id="reg-store" class="input" placeholder="Minha Loja" required />
+      </div>
+      <div id="reg-error" class="text-red-500 text-sm hidden"></div>
+      <button type="submit" class="btn-primary w-full py-3">Criar Conta Grátis</button>
+    </form>
+    <p class="text-center text-sm mt-4"><a href="#" onclick="showScreen('login')" class="text-indigo-600 hover:underline">Já tenho conta</a></p>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: FORGOT PASSWORD
+     ============================================================ -->
+<div id="screen-forgot" class="screen min-h-screen items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">
+  <div class="bg-white rounded-2xl shadow-xl p-10 w-full max-w-md">
+    <div class="text-center mb-6">
+      <div class="text-4xl mb-2">🔑</div>
+      <h1 class="text-2xl font-bold text-indigo-800">Recuperar Senha</h1>
+    </div>
+    <form class="space-y-4" onsubmit="doForgot(event)">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Email cadastrado</label>
+        <input id="forgot-email" type="email" class="input" placeholder="seu@email.com" required />
+      </div>
+      <button type="submit" class="btn-primary w-full py-3">Enviar Código</button>
+    </form>
+    <p class="text-center text-sm mt-4"><a href="#" onclick="showScreen('login')" class="text-indigo-600 hover:underline">Voltar ao login</a></p>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: RENEWAL
+     ============================================================ -->
+<div id="screen-renewal" class="screen min-h-screen items-center justify-center bg-gradient-to-br from-amber-100 to-orange-200">
+  <div class="bg-white rounded-2xl shadow-xl p-10 w-full max-w-lg text-center">
+    <div class="text-5xl mb-4">⏰</div>
+    <h1 class="text-2xl font-bold text-orange-700 mb-2">Licença Expirada</h1>
+    <p id="renewal-msg" class="text-gray-600 mb-2"></p>
+    <p id="renewal-expiry" class="text-sm text-gray-500 mb-6"></p>
+    <div class="flex flex-col sm:flex-row gap-3 justify-center mb-4">
+      <a id="btn-hotmart" href="#" target="_blank" onclick="openHotmart()" class="btn-primary py-3 px-6 text-base rounded-xl">🛒 Assinar via Hotmart</a>
+      <a id="btn-stripe" href="#" target="_blank" onclick="openStripe()" class="btn-success py-3 px-6 text-base rounded-xl">💳 Assinar via Stripe</a>
+    </div>
+    <p class="text-sm text-gray-500">
+      <a href="#" onclick="checkRenewal()" class="text-indigo-600 hover:underline">Já paguei — verificar acesso</a>
+    </p>
+    <p class="text-xs text-gray-400 mt-4">
+      <a href="#" onclick="doLogout()" class="hover:underline">Sair</a>
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: ADMIN LOGIN
+     ============================================================ -->
+<div id="screen-admin-login" class="screen min-h-screen items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900">
+  <div class="bg-slate-800 rounded-2xl shadow-xl p-10 w-full max-w-md border border-slate-600">
+    <div class="text-center mb-8">
+      <div class="text-4xl mb-2">🔐</div>
+      <h1 class="text-2xl font-bold text-white">Super Admin</h1>
+      <p class="text-slate-400 text-sm mt-1">Painel de Administração</p>
+    </div>
+    <form class="space-y-4" onsubmit="doAdminLogin(event)">
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">Email Admin</label>
+        <input id="admin-login-email" type="email" class="input bg-slate-700 border-slate-600 text-white placeholder-slate-400" placeholder="admin@jsm.com" required />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">Senha</label>
+        <input id="admin-login-pass" type="password" class="input bg-slate-700 border-slate-600 text-white" placeholder="••••••••" required />
+      </div>
+      <div id="admin-login-error" class="text-red-400 text-sm hidden">Credenciais inválidas.</div>
+      <button type="submit" class="btn-primary w-full py-3">Entrar como Admin</button>
+    </form>
+    <p class="text-center text-sm mt-4"><a href="#" onclick="showScreen('login')" class="text-slate-400 hover:text-white">← Voltar ao login de usuário</a></p>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: ADMIN PANEL
+     ============================================================ -->
+<div id="screen-admin-panel" class="screen min-h-screen flex-col bg-slate-900 text-white">
+  <!-- Admin Header -->
+  <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">🔐</span>
+      <div>
+        <h1 class="font-bold text-lg">JSM Store — Super Admin</h1>
+        <p class="text-slate-400 text-xs">Painel de controle de tenants</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="ExportManager.exportAdmin()" class="btn-success text-sm px-3 py-1.5">📊 Exportar Excel</button>
+      <button onclick="doAdminLogout()" class="btn-danger text-sm px-3 py-1.5">Sair</button>
+    </div>
+  </header>
+
+  <main class="flex-1 p-6 space-y-6">
+    <!-- KPI Row -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <p class="text-slate-400 text-sm">Total Usuários</p>
+        <p class="text-3xl font-bold text-white" id="adm-total">0</p>
+      </div>
+      <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <p class="text-slate-400 text-sm">Em Trial</p>
+        <p class="text-3xl font-bold text-yellow-400" id="adm-trial">0</p>
+      </div>
+      <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <p class="text-slate-400 text-sm">Ativos</p>
+        <p class="text-3xl font-bold text-emerald-400" id="adm-active">0</p>
+      </div>
+      <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <p class="text-slate-400 text-sm">Expirados/Inativos</p>
+        <p class="text-3xl font-bold text-red-400" id="adm-expired">0</p>
+      </div>
+    </div>
+
+    <!-- Registration chart -->
+    <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+      <h3 class="font-bold text-slate-200 mb-3">Registros por Período</h3>
+      <div class="flex gap-6 text-sm" id="adm-chart">
+        <div class="text-center"><p class="text-slate-400">Últimos 7 dias</p><p class="text-2xl font-bold text-indigo-400" id="adm-reg7">0</p></div>
+        <div class="text-center"><p class="text-slate-400">Últimos 30 dias</p><p class="text-2xl font-bold text-indigo-400" id="adm-reg30">0</p></div>
+        <div class="text-center"><p class="text-slate-400">Últimos 90 dias</p><p class="text-2xl font-bold text-indigo-400" id="adm-reg90">0</p></div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+      <div class="flex flex-wrap gap-3 items-center">
+        <select id="adm-filter-status" class="input bg-slate-700 border-slate-600 text-white max-w-[150px]" onchange="renderAdminTenants()">
+          <option value="">Todos status</option>
+          <option value="trial">Trial</option>
+          <option value="active">Ativo</option>
+          <option value="expired">Expirado</option>
+          <option value="inactive">Inativo</option>
+        </select>
+        <select id="adm-filter-plan" class="input bg-slate-700 border-slate-600 text-white max-w-[150px]" onchange="renderAdminTenants()">
+          <option value="">Todos planos</option>
+          <option value="trial7">Trial 7d</option>
+          <option value="monthly">Mensal</option>
+          <option value="annual">Anual</option>
+        </select>
+        <input id="adm-filter-q" type="text" class="input bg-slate-700 border-slate-600 text-white max-w-[200px]" placeholder="Buscar nome/email..." oninput="renderAdminTenants()" />
+        <button onclick="renderAdminTenants()" class="btn-secondary text-sm">🔄 Atualizar</button>
+      </div>
+    </div>
+
+    <!-- Tenants table -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-slate-700 text-slate-300 text-left">
+              <th class="px-4 py-3">Nome</th>
+              <th class="px-4 py-3">Email</th>
+              <th class="px-4 py-3">Loja</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3">Plano</th>
+              <th class="px-4 py-3">Cadastro</th>
+              <th class="px-4 py-3">Expira</th>
+              <th class="px-4 py-3">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="adm-tenants-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
 </div>
 
 <!-- ============================================================
      MAIN APP
      ============================================================ -->
-<div id="app" class="hidden min-h-screen flex">
+<div id="app" class="min-h-screen flex">
 
   <!-- Sidebar -->
-  <aside id="sidebar" class="w-64 bg-indigo-900 text-white flex flex-col fixed inset-y-0 left-0 z-30 transition-transform">
+  <aside class="w-64 bg-indigo-900 text-white flex flex-col fixed inset-y-0 left-0 z-30">
     <div class="p-6 border-b border-indigo-700">
       <div class="flex items-center gap-3">
         <span class="text-2xl">🏪</span>
         <div>
-          <h1 class="font-bold text-lg leading-none">JSM Store</h1>
-          <p class="text-indigo-300 text-xs">Sistema de Gestão</p>
+          <h1 class="font-bold text-lg leading-none" id="sidebar-store-name">JSM Store</h1>
+          <p class="text-indigo-300 text-xs" id="sidebar-user-name">Usuário</p>
         </div>
       </div>
     </div>
@@ -93,10 +307,10 @@
     </nav>
     <div class="p-4 border-t border-indigo-700">
       <div class="flex items-center gap-2 mb-3">
-        <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-sm font-bold">A</div>
-        <span class="text-sm text-indigo-200">Administrador</span>
+        <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-sm font-bold" id="sidebar-avatar">A</div>
+        <span class="text-sm text-indigo-200 truncate" id="sidebar-email-display">email</span>
       </div>
-      <button onclick="logout()" class="w-full text-left text-sm text-indigo-300 hover:text-white flex items-center gap-2 px-2 py-1 rounded hover:bg-indigo-700 transition">
+      <button onclick="confirmLogout()" class="w-full text-left text-sm text-indigo-300 hover:text-white flex items-center gap-2 px-2 py-1 rounded hover:bg-indigo-700 transition">
         <span>🚪</span> Sair
       </button>
     </div>
@@ -151,7 +365,6 @@
             <div><p class="text-sm text-gray-500">Receita (mês)</p><p class="text-2xl font-bold text-yellow-700" id="dash-revenue">R$ 0</p></div>
           </div>
         </div>
-
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="card">
             <h3 class="font-bold text-gray-700 mb-4">Últimas Vendas</h3>
@@ -173,7 +386,10 @@
         <div class="card">
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h3 class="font-bold text-gray-700 text-lg">Gerenciar Produtos</h3>
-            <button onclick="openModal('modal-product')" class="btn-primary">+ Novo Produto</button>
+            <div class="flex gap-2">
+              <button onclick="ExportManager.exportProducts()" class="btn-secondary text-sm">📊 Exportar Excel</button>
+              <button onclick="openProductModal()" class="btn-primary">+ Novo Produto</button>
+            </div>
           </div>
           <input type="text" id="product-search" class="input mb-4 max-w-xs" placeholder="Buscar produto..." oninput="renderProducts()" />
           <div class="overflow-x-auto">
@@ -198,7 +414,10 @@
         <div class="card">
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h3 class="font-bold text-gray-700 text-lg">Gerenciar Clientes</h3>
-            <button onclick="openModal('modal-customer')" class="btn-primary">+ Novo Cliente</button>
+            <div class="flex gap-2">
+              <button onclick="ExportManager.exportCustomers()" class="btn-secondary text-sm">📊 Exportar Excel</button>
+              <button onclick="openCustomerModal()" class="btn-primary">+ Novo Cliente</button>
+            </div>
           </div>
           <input type="text" id="customer-search" class="input mb-4 max-w-xs" placeholder="Buscar cliente..." oninput="renderCustomers()" />
           <div class="overflow-x-auto">
@@ -221,21 +440,16 @@
       <!-- ===== SALES ===== -->
       <section id="page-sales" class="hidden">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <!-- New sale form -->
           <div class="card lg:col-span-1">
             <h3 class="font-bold text-gray-700 mb-4">Nova Venda</h3>
             <div class="space-y-3">
               <div>
                 <label class="text-sm font-medium text-gray-600 mb-1 block">Cliente</label>
-                <select id="sale-customer" class="input">
-                  <option value="">Selecionar cliente...</option>
-                </select>
+                <select id="sale-customer" class="input"><option value="">Selecionar cliente...</option></select>
               </div>
               <div>
                 <label class="text-sm font-medium text-gray-600 mb-1 block">Produto</label>
-                <select id="sale-product" class="input" onchange="updateSalePrice()">
-                  <option value="">Selecionar produto...</option>
-                </select>
+                <select id="sale-product" class="input" onchange="updateSalePrice()"><option value="">Selecionar produto...</option></select>
               </div>
               <div>
                 <label class="text-sm font-medium text-gray-600 mb-1 block">Quantidade</label>
@@ -261,12 +475,13 @@
               <button onclick="registerSale()" class="btn-success w-full">Registrar Venda</button>
             </div>
           </div>
-
-          <!-- Sales list -->
           <div class="card lg:col-span-2">
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h3 class="font-bold text-gray-700 text-lg">Histórico de Vendas</h3>
-              <input type="month" id="sales-filter-month" class="input max-w-[150px]" onchange="renderSales()" />
+              <div class="flex gap-2">
+                <button onclick="ExportManager.exportSales()" class="btn-secondary text-sm">📊 Exportar Excel</button>
+                <input type="month" id="sales-filter-month" class="input max-w-[150px]" onchange="renderSales()" />
+              </div>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
@@ -302,12 +517,14 @@
             <p class="text-2xl font-bold text-indigo-700" id="fin-profit">R$ 0,00</p>
           </div>
         </div>
-
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="card">
             <div class="flex items-center justify-between mb-4">
               <h3 class="font-bold text-gray-700">Lançamentos</h3>
-              <button onclick="openModal('modal-finance')" class="btn-primary text-sm">+ Novo</button>
+              <div class="flex gap-2">
+                <button onclick="ExportManager.exportFinance()" class="btn-secondary text-sm">📊 Exportar Excel</button>
+                <button onclick="openModal('modal-finance')" class="btn-primary text-sm">+ Novo</button>
+              </div>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
@@ -335,9 +552,9 @@
       <section id="page-backup" class="hidden">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="card">
-            <h3 class="font-bold text-gray-700 mb-2">Exportar Dados</h3>
+            <h3 class="font-bold text-gray-700 mb-2">Exportar Dados (JSON)</h3>
             <p class="text-sm text-gray-500 mb-4">Faça o download de todos os dados do sistema em formato JSON.</p>
-            <button onclick="exportData()" class="btn-primary w-full">⬇️ Exportar Backup</button>
+            <button onclick="exportData()" class="btn-primary w-full">⬇️ Exportar Backup JSON</button>
           </div>
           <div class="card">
             <h3 class="font-bold text-gray-700 mb-2">Importar Dados</h3>
@@ -355,6 +572,39 @@
           <div class="card">
             <h3 class="font-bold text-gray-700 mb-2">Informações do Sistema</h3>
             <div id="backup-info" class="space-y-2 text-sm text-gray-600"></div>
+          </div>
+          <!-- Webhook tester -->
+          <div class="card lg:col-span-2">
+            <h3 class="font-bold text-gray-700 mb-2">🧪 Testar Webhooks (Simulação)</h3>
+            <p class="text-sm text-gray-500 mb-4">Simule eventos de pagamento para testar a integração de licenças.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div>
+                <p class="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Hotmart</p>
+                <div class="space-y-2">
+                  <button onclick="testWebhook('hotmart','PURCHASE_APPROVED')" class="btn-success w-full text-sm">✅ PURCHASE_APPROVED</button>
+                  <button onclick="testWebhook('hotmart','PURCHASE_CANCELED')" class="btn-danger w-full text-sm">❌ PURCHASE_CANCELED</button>
+                  <button onclick="testWebhook('hotmart','PURCHASE_REFUNDED')" class="btn-warning w-full text-sm">↩️ PURCHASE_REFUNDED</button>
+                  <button onclick="testWebhook('hotmart','SUBSCRIPTION_CANCELLATION')" class="btn-secondary w-full text-sm">🔕 SUBSCRIPTION_CANCELLATION</button>
+                </div>
+              </div>
+              <div>
+                <p class="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Stripe</p>
+                <div class="space-y-2">
+                  <button onclick="testWebhook('stripe','checkout.session.completed')" class="btn-success w-full text-sm">✅ checkout.session.completed</button>
+                  <button onclick="testWebhook('stripe','customer.subscription.deleted')" class="btn-danger w-full text-sm">❌ subscription.deleted</button>
+                  <button onclick="testWebhook('stripe','invoice.payment_failed')" class="btn-warning w-full text-sm">⚠️ invoice.payment_failed</button>
+                </div>
+              </div>
+              <div>
+                <p class="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Licença Manual</p>
+                <div class="space-y-2">
+                  <button onclick="testActivateLicense('monthly')" class="btn-primary w-full text-sm">🔑 Ativar Mensal</button>
+                  <button onclick="testActivateLicense('annual')" class="btn-primary w-full text-sm">🔑 Ativar Anual</button>
+                  <button onclick="testExpireLicense()" class="btn-danger w-full text-sm">⏰ Expirar Licença</button>
+                </div>
+              </div>
+            </div>
+            <div id="webhook-log" class="mt-4 bg-gray-900 text-green-400 text-xs font-mono rounded-lg p-3 max-h-48 overflow-y-auto hidden"></div>
           </div>
         </div>
       </section>
@@ -492,119 +742,921 @@
      JAVASCRIPT
      ============================================================ -->
 <script>
-// ── State ─────────────────────────────────────────────────────
-const STORAGE_KEY = 'jsm_store_data';
-let state = {
-  products: [],
-  customers: [],
-  sales: [],
-  finances: [],
-  notifications: [],
-};
+// ============================================================
+// CONFIGURABLE CONSTANTS
+// ============================================================
+const HOTMART_URL      = 'https://hotmart.com/product/jsm-store';
+const STRIPE_URL       = 'https://buy.stripe.com/jsm-store';
+const ADMIN_EMAIL      = 'superadmin@jsm.com';
+const ADMIN_PASS       = 'JSMAdmin@2025';
+const TRIAL_DAYS       = 7;
+const HOTMART_HOTTOK   = 'demo_hottok_123';
 
-function loadState() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) state = { ...state, ...JSON.parse(saved) };
-  } catch {}
-}
+// ============================================================
+// LAYER 1 — MULTI-TENANT AUTH
+// ============================================================
 
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+// Storage keys
+const REGISTRY_KEY     = 'jsm_saas_registry';
+const SESSION_KEY      = 'jsm_session';
+const ADMIN_SESSION_KEY= 'jsm_admin_session';
+
+// Active sessions
+let currentSession      = null;  // { tenantId, email, name, storeName }
+let currentAdminSession = null;  // { email }
+
+// Simple hash: charCode accumulation + btoa
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return btoa(h.toString(36) + str.length);
 }
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
-// ── Auth ───────────────────────────────────────────────────────
-const USERS = [{ user: 'admin', pass: 'admin123' }];
-
-document.getElementById('login-form').addEventListener('submit', e => {
-  e.preventDefault();
-  const u = document.getElementById('login-user').value.trim();
-  const p = document.getElementById('login-pass').value;
-  if (USERS.some(x => x.user === u && x.pass === p)) {
-    document.getElementById('login-screen').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    document.getElementById('app').classList.add('flex');
-    initApp();
-  } else {
-    document.getElementById('login-error').classList.remove('hidden');
-  }
-});
-
-function logout() {
-  document.getElementById('app').classList.add('hidden');
-  document.getElementById('app').classList.remove('flex');
-  document.getElementById('login-screen').classList.remove('hidden');
-  document.getElementById('login-user').value = '';
-  document.getElementById('login-pass').value = '';
+// Registry helpers
+function getRegistry() {
+  try { return JSON.parse(localStorage.getItem(REGISTRY_KEY)) || []; } catch { return []; }
+}
+function saveRegistry(reg) {
+  localStorage.setItem(REGISTRY_KEY, JSON.stringify(reg));
+}
+function findTenantByEmail(email) {
+  return getRegistry().find(t => t.email.toLowerCase() === email.toLowerCase());
+}
+function updateTenant(tenantId, patch) {
+  const reg = getRegistry();
+  const idx = reg.findIndex(t => t.tenantId === tenantId);
+  if (idx >= 0) { reg[idx] = { ...reg[idx], ...patch }; saveRegistry(reg); }
 }
 
-// ── Init ───────────────────────────────────────────────────────
+// Migration: if old jsm_store_data exists and no registry, auto-migrate
+function maybeMigrateLegacy() {
+  const old = localStorage.getItem('jsm_store_data');
+  const reg = getRegistry();
+  if (old && reg.length === 0) {
+    const tenantId = uid();
+    const now = new Date();
+    const expires = new Date(now.getTime() + TRIAL_DAYS * 86400000).toISOString();
+    const tenant = {
+      tenantId,
+      email: 'legacy@jsm.local',
+      passwordHash: simpleHash('admin123'),
+      name: 'Administrador',
+      storeName: 'JSM Store (Migrado)',
+      status: 'active',
+      plan: 'monthly',
+      registeredAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 365 * 86400000).toISOString(),
+      gateway: null,
+      gatewayCustomerId: null,
+    };
+    saveRegistry([tenant]);
+    localStorage.setItem('jsm_store_data_' + tenantId, old);
+    console.info('[JSM v86] Legacy data migrated to tenant:', tenantId);
+  }
+}
+
+// State: per-tenant, keyed by tenantId
+let state = { products:[], customers:[], sales:[], finances:[], notifications:[] };
+
+function stateKey() {
+  return currentSession ? 'jsm_store_data_' + currentSession.tenantId : 'jsm_store_data_fallback';
+}
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(stateKey());
+    if (saved) state = { ...state, ...JSON.parse(saved) };
+  } catch(e) { console.error('loadState error', e); }
+}
+
+function saveState() {
+  localStorage.setItem(stateKey(), JSON.stringify(state));
+}
+
+// ============================================================
+// AUTH GUARD — runs on DOMContentLoaded
+// ============================================================
+function authGuard() {
+  maybeMigrateLegacy();
+
+  // Check admin session
+  const adminSess = localStorage.getItem(ADMIN_SESSION_KEY);
+  if (adminSess) {
+    try {
+      currentAdminSession = JSON.parse(adminSess);
+      showScreen('admin-panel');
+      renderAdminPanel();
+      return;
+    } catch {}
+  }
+
+  // Check user session
+  const sess = localStorage.getItem(SESSION_KEY);
+  if (!sess) { showScreen('login'); return; }
+
+  try {
+    currentSession = JSON.parse(sess);
+  } catch { showScreen('login'); return; }
+
+  const lic = LicenseManager.checkLicense(currentSession.tenantId);
+  if (!lic.valid) {
+    showRenewalScreen(lic);
+  } else {
+    showApp();
+  }
+}
+
+// ============================================================
+// SCREEN MANAGEMENT
+// ============================================================
+function showScreen(name) {
+  // Hide all screens and app
+  document.querySelectorAll('.screen').forEach(s => { s.style.display = 'none'; });
+  document.getElementById('app').style.display = 'none';
+
+  const el = document.getElementById('screen-' + name);
+  if (el) {
+    el.style.display = 'flex';
+    el.style.flexDirection = name === 'admin-panel' ? 'column' : '';
+  }
+}
+
+function showApp() {
+  document.querySelectorAll('.screen').forEach(s => { s.style.display = 'none'; });
+  document.getElementById('app').style.display = 'flex';
+  initApp();
+}
+
+function showRenewalScreen(lic) {
+  showScreen('renewal');
+  const t = getRegistry().find(t => t.tenantId === currentSession.tenantId);
+  let msg = '';
+  if (lic.status === 'trial' && lic.daysLeft <= 0) {
+    msg = 'Seu período de trial expirou.';
+  } else if (lic.status === 'trial') {
+    msg = `Trial: ${lic.daysLeft} dia(s) restante(s).`;
+  } else if (lic.status === 'expired') {
+    msg = 'Sua licença expirou. Renove para continuar.';
+  } else {
+    msg = 'Sua conta está inativa.';
+  }
+  document.getElementById('renewal-msg').textContent = msg;
+  document.getElementById('renewal-expiry').textContent =
+    t ? 'Expirou em: ' + new Date(t.expiresAt).toLocaleDateString('pt-BR') : '';
+}
+
+// ============================================================
+// LOGIN
+// ============================================================
+function doLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.classList.add('hidden');
+
+  const tenant = findTenantByEmail(email);
+  if (!tenant || tenant.passwordHash !== simpleHash(pass)) {
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  currentSession = { tenantId: tenant.tenantId, email: tenant.email, name: tenant.name, storeName: tenant.storeName };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(currentSession));
+
+  const lic = LicenseManager.checkLicense(tenant.tenantId);
+  if (!lic.valid) {
+    showRenewalScreen(lic);
+  } else {
+    showApp();
+  }
+}
+
+// ============================================================
+// REGISTER
+// ============================================================
+function doRegister(e) {
+  e.preventDefault();
+  const name      = document.getElementById('reg-name').value.trim();
+  const email     = document.getElementById('reg-email').value.trim();
+  const pass      = document.getElementById('reg-pass').value;
+  const storeName = document.getElementById('reg-store').value.trim();
+  const errEl     = document.getElementById('reg-error');
+  errEl.classList.add('hidden');
+
+  if (findTenantByEmail(email)) {
+    errEl.textContent = 'Este email já está cadastrado.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  const now = new Date();
+  const expires = new Date(now.getTime() + TRIAL_DAYS * 86400000).toISOString();
+  const tenant = {
+    tenantId: uid(),
+    email,
+    passwordHash: simpleHash(pass),
+    name,
+    storeName,
+    status: 'trial',
+    plan: 'trial7',
+    registeredAt: now.toISOString(),
+    expiresAt: expires,
+    gateway: null,
+    gatewayCustomerId: null,
+  };
+
+  const reg = getRegistry();
+  reg.push(tenant);
+  saveRegistry(reg);
+
+  currentSession = { tenantId: tenant.tenantId, email: tenant.email, name: tenant.name, storeName: tenant.storeName };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(currentSession));
+
+  toast('Conta criada! Bem-vindo(a), ' + name + '!', 'success');
+  showApp();
+}
+
+// ============================================================
+// FORGOT PASSWORD
+// ============================================================
+function doForgot(e) {
+  e.preventDefault();
+  const email = document.getElementById('forgot-email').value.trim();
+  const tenant = findTenantByEmail(email);
+  if (!tenant) {
+    alert('Email não encontrado no sistema.');
+    return;
+  }
+  // Simulated recovery code
+  const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+  alert(`[SIMULAÇÃO] Código de recuperação para ${email}:\n\n${code}\n\n(Em produção, seria enviado por email)`);
+  showScreen('login');
+}
+
+// ============================================================
+// LOGOUT
+// ============================================================
+function confirmLogout() {
+  showConfirm('Sair do Sistema', 'Deseja realmente sair?', '🚪', () => doLogout());
+}
+
+function doLogout() {
+  currentSession = null;
+  localStorage.removeItem(SESSION_KEY);
+  state = { products:[], customers:[], sales:[], finances:[], notifications:[] };
+  showScreen('login');
+}
+
+// ============================================================
+// RENEWAL
+// ============================================================
+function openHotmart() { window.open(HOTMART_URL, '_blank'); }
+function openStripe()  { window.open(STRIPE_URL,  '_blank'); }
+
+function checkRenewal() {
+  if (!currentSession) { showScreen('login'); return; }
+  const lic = LicenseManager.checkLicense(currentSession.tenantId);
+  if (lic.valid) {
+    toast('Acesso liberado!', 'success');
+    showApp();
+  } else {
+    toast('Licença ainda não foi atualizada.', 'warning');
+  }
+}
+
+// ============================================================
+// ADMIN LOGIN
+// ============================================================
+function doAdminLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('admin-login-email').value.trim();
+  const pass  = document.getElementById('admin-login-pass').value;
+  const errEl = document.getElementById('admin-login-error');
+  errEl.classList.add('hidden');
+
+  if (email === ADMIN_EMAIL && pass === ADMIN_PASS) {
+    currentAdminSession = { email };
+    localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(currentAdminSession));
+    showScreen('admin-panel');
+    renderAdminPanel();
+  } else {
+    errEl.classList.remove('hidden');
+  }
+}
+
+function doAdminLogout() {
+  currentAdminSession = null;
+  localStorage.removeItem(ADMIN_SESSION_KEY);
+  showScreen('login');
+}
+
+// ============================================================
+// LAYER 2 — ADMIN PANEL
+// ============================================================
+function renderAdminPanel() {
+  const reg = getRegistry();
+  const now = new Date();
+
+  const byStatus = s => reg.filter(t => t.status === s).length;
+  const expiredCount = reg.filter(t => {
+    if (t.status === 'expired' || t.status === 'inactive') return true;
+    if (t.status === 'trial' && new Date(t.expiresAt) < now) return true;
+    return false;
+  }).length;
+
+  document.getElementById('adm-total').textContent   = reg.length;
+  document.getElementById('adm-trial').textContent   = byStatus('trial');
+  document.getElementById('adm-active').textContent  = byStatus('active');
+  document.getElementById('adm-expired').textContent = expiredCount;
+
+  // Registration chart
+  function regsInDays(d) {
+    const cutoff = new Date(now.getTime() - d * 86400000);
+    return reg.filter(t => new Date(t.registeredAt) >= cutoff).length;
+  }
+  document.getElementById('adm-reg7').textContent  = regsInDays(7);
+  document.getElementById('adm-reg30').textContent = regsInDays(30);
+  document.getElementById('adm-reg90').textContent = regsInDays(90);
+
+  renderAdminTenants();
+}
+
+function renderAdminTenants() {
+  const reg      = getRegistry();
+  const fStatus  = document.getElementById('adm-filter-status').value;
+  const fPlan    = document.getElementById('adm-filter-plan').value;
+  const fQ       = (document.getElementById('adm-filter-q').value || '').toLowerCase();
+
+  const filtered = reg.filter(t => {
+    if (fStatus && t.status !== fStatus) return false;
+    if (fPlan   && t.plan   !== fPlan)   return false;
+    if (fQ && !t.name.toLowerCase().includes(fQ) && !t.email.toLowerCase().includes(fQ) && !t.storeName.toLowerCase().includes(fQ)) return false;
+    return true;
+  });
+
+  const statusBadge = s => {
+    const map = {
+      trial:    'background:#fef08a;color:#713f12;',
+      active:   'background:#d1fae5;color:#065f46;',
+      expired:  'background:#fee2e2;color:#991b1b;',
+      inactive: 'background:#f3f4f6;color:#374151;',
+    };
+    return `<span class="badge" style="${map[s]||''}">${s}</span>`;
+  };
+
+  const rows = filtered.map(t => `
+    <tr style="border-bottom:1px solid #334155;">
+      <td class="px-4 py-3 text-slate-200">${escHtml(t.name)}</td>
+      <td class="px-4 py-3 text-slate-400 text-xs">${escHtml(t.email)}</td>
+      <td class="px-4 py-3 text-slate-300 text-xs">${escHtml(t.storeName)}</td>
+      <td class="px-4 py-3">${statusBadge(t.status)}</td>
+      <td class="px-4 py-3 text-slate-400 text-xs">${t.plan}</td>
+      <td class="px-4 py-3 text-slate-400 text-xs">${new Date(t.registeredAt).toLocaleDateString('pt-BR')}</td>
+      <td class="px-4 py-3 text-slate-400 text-xs">${new Date(t.expiresAt).toLocaleDateString('pt-BR')}</td>
+      <td class="px-4 py-3">
+        <div class="flex gap-1 flex-wrap">
+          <button onclick="adminActivate('${t.tenantId}')" style="background:#10b981;color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:4px;border:none;cursor:pointer;">Ativar</button>
+          <button onclick="adminExtend('${t.tenantId}')" style="background:#6366f1;color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:4px;border:none;cursor:pointer;">+30d</button>
+          <button onclick="adminDeactivate('${t.tenantId}')" style="background:#f59e0b;color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:4px;border:none;cursor:pointer;">Inativar</button>
+          <button onclick="adminDelete('${t.tenantId}')" style="background:#ef4444;color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:4px;border:none;cursor:pointer;">Excluir</button>
+        </div>
+      </td>
+    </tr>`).join('');
+
+  document.getElementById('adm-tenants-tbody').innerHTML = rows ||
+    '<tr><td colspan="8" class="px-4 py-6 text-center text-slate-500">Nenhum tenant encontrado.</td></tr>';
+}
+
+function adminActivate(tenantId) {
+  const expires = new Date(Date.now() + 30 * 86400000).toISOString();
+  updateTenant(tenantId, { status: 'active', plan: 'monthly', expiresAt: expires });
+  renderAdminPanel();
+  toast('Tenant ativado por 30 dias.', 'success');
+}
+
+function adminExtend(tenantId) {
+  const reg = getRegistry();
+  const t = reg.find(x => x.tenantId === tenantId);
+  if (!t) return;
+  const base = new Date(Math.max(Date.now(), new Date(t.expiresAt).getTime()));
+  const expires = new Date(base.getTime() + 30 * 86400000).toISOString();
+  updateTenant(tenantId, { expiresAt: expires });
+  renderAdminPanel();
+  toast('Licença estendida por +30 dias.', 'success');
+}
+
+function adminDeactivate(tenantId) {
+  updateTenant(tenantId, { status: 'inactive' });
+  renderAdminPanel();
+  toast('Tenant inativado.', 'warning');
+}
+
+function adminDelete(tenantId) {
+  showConfirm('Excluir Tenant', 'Isso remove o tenant e todos os dados. Irreversível!', '🗑️', () => {
+    let reg = getRegistry().filter(t => t.tenantId !== tenantId);
+    saveRegistry(reg);
+    localStorage.removeItem('jsm_store_data_' + tenantId);
+    renderAdminPanel();
+    toast('Tenant excluído.', 'info');
+  });
+}
+
+// ============================================================
+// LAYER 3 — LICENSE MANAGER
+// ============================================================
+const LicenseManager = {
+  // Check if tenant license is valid
+  checkLicense(tenantId) {
+    const reg = getRegistry();
+    const t = reg.find(x => x.tenantId === tenantId);
+    if (!t) return { valid: false, daysLeft: 0, status: 'not_found' };
+
+    const now = new Date();
+    const exp = new Date(t.expiresAt);
+    const daysLeft = Math.ceil((exp - now) / 86400000);
+
+    if (t.status === 'inactive') return { valid: false, daysLeft, status: 'inactive' };
+    if (t.status === 'expired')  return { valid: false, daysLeft, status: 'expired' };
+    if (t.status === 'trial') {
+      if (daysLeft <= 0) return { valid: false, daysLeft: 0, status: 'trial' };
+      return { valid: true, daysLeft, status: 'trial' };
+    }
+    if (t.status === 'active') {
+      if (daysLeft <= 0) {
+        updateTenant(tenantId, { status: 'expired' });
+        return { valid: false, daysLeft: 0, status: 'expired' };
+      }
+      return { valid: true, daysLeft, status: 'active' };
+    }
+    return { valid: false, daysLeft, status: t.status };
+  },
+
+  activate(tenantId, plan, gateway) {
+    const days = plan === 'annual' ? 365 : 30;
+    const expires = new Date(Date.now() + days * 86400000).toISOString();
+    updateTenant(tenantId, { status: 'active', plan: plan || 'monthly', expiresAt: expires, gateway: gateway || null });
+    console.info('[LicenseManager] Activated:', tenantId, plan, gateway);
+  },
+
+  deactivate(tenantId) {
+    updateTenant(tenantId, { status: 'inactive' });
+    console.info('[LicenseManager] Deactivated:', tenantId);
+  },
+
+  expire(tenantId) {
+    updateTenant(tenantId, { status: 'expired' });
+    console.info('[LicenseManager] Expired:', tenantId);
+  },
+
+  process(action, email, plan, gateway) {
+    const tenant = findTenantByEmail(email);
+    if (!tenant) { console.warn('[LicenseManager] Tenant not found for email:', email); return; }
+    if (action === 'activate')   this.activate(tenant.tenantId, plan, gateway);
+    if (action === 'deactivate') this.deactivate(tenant.tenantId);
+    if (action === 'expire')     this.expire(tenant.tenantId);
+  },
+};
+
+// ============================================================
+// WEBHOOK HANDLERS
+// ============================================================
+function handleHotmartWebhook(payload) {
+  console.group('[Hotmart Webhook]');
+  console.log('Full payload:', JSON.stringify(payload, null, 2));
+  console.log('Event:', payload.event);
+  console.log('Hottok:', payload.hottok);
+  console.groupEnd();
+
+  if (payload.hottok !== HOTMART_HOTTOK) {
+    console.warn('[Hotmart] Invalid hottok — ignoring.');
+    return;
+  }
+
+  const email = payload.data && payload.data.buyer && payload.data.buyer.email;
+  if (!email) { console.warn('[Hotmart] No buyer email in payload.'); return; }
+
+  const plan = (payload.data && payload.data.product && payload.data.product.name === 'annual') ? 'annual' : 'monthly';
+
+  switch (payload.event) {
+    case 'PURCHASE_APPROVED':
+      LicenseManager.process('activate', email, plan, 'hotmart');
+      addWebhookLog('[Hotmart] PURCHASE_APPROVED → activate: ' + email);
+      break;
+    case 'PURCHASE_CANCELED':
+      LicenseManager.process('deactivate', email, null, null);
+      addWebhookLog('[Hotmart] PURCHASE_CANCELED → deactivate: ' + email);
+      break;
+    case 'PURCHASE_REFUNDED':
+      LicenseManager.process('deactivate', email, null, null);
+      addWebhookLog('[Hotmart] PURCHASE_REFUNDED → deactivate: ' + email);
+      break;
+    case 'SUBSCRIPTION_CANCELLATION':
+      LicenseManager.process('expire', email, null, null);
+      addWebhookLog('[Hotmart] SUBSCRIPTION_CANCELLATION → expire: ' + email);
+      break;
+    default:
+      console.info('[Hotmart] Unhandled event:', payload.event);
+  }
+}
+
+function handleStripeWebhook(payload) {
+  console.group('[Stripe Webhook]');
+  console.log('Full payload:', JSON.stringify(payload, null, 2));
+  console.log('Event type:', payload.type);
+  console.groupEnd();
+
+  const email = payload.data && payload.data.object && (
+    payload.data.object.customer_email ||
+    (payload.data.object.customer_details && payload.data.object.customer_details.email)
+  );
+
+  switch (payload.type) {
+    case 'checkout.session.completed':
+      if (email) {
+        const plan = payload.data.object.mode === 'subscription' ? 'monthly' : 'monthly';
+        LicenseManager.process('activate', email, plan, 'stripe');
+        addWebhookLog('[Stripe] checkout.session.completed → activate: ' + email);
+      }
+      break;
+    case 'customer.subscription.deleted':
+      if (email) {
+        LicenseManager.process('deactivate', email, null, null);
+        addWebhookLog('[Stripe] customer.subscription.deleted → deactivate: ' + email);
+      }
+      break;
+    case 'invoice.payment_failed':
+      addWebhookLog('[Stripe] invoice.payment_failed — admin notification for: ' + (email || 'unknown'));
+      toast('⚠️ Falha de pagamento Stripe para: ' + (email || 'unknown'), 'warning');
+      break;
+    default:
+      console.info('[Stripe] Unhandled event:', payload.type);
+  }
+}
+
+function addWebhookLog(msg) {
+  const log = document.getElementById('webhook-log');
+  if (!log) return;
+  log.classList.remove('hidden');
+  const line = document.createElement('div');
+  line.textContent = '[' + new Date().toLocaleTimeString('pt-BR') + '] ' + msg;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+// Webhook test helpers (called from Backup page)
+function testWebhook(gateway, event) {
+  const email = currentSession ? currentSession.email : 'test@jsm.com';
+  if (gateway === 'hotmart') {
+    handleHotmartWebhook({
+      event,
+      hottok: HOTMART_HOTTOK,
+      data: { buyer: { email }, product: { name: 'monthly' } },
+    });
+  } else {
+    handleStripeWebhook({
+      type: event,
+      data: { object: { customer_email: email, mode: 'subscription', customer_details: { email } } },
+    });
+  }
+  toast('Webhook simulado: ' + event, 'info');
+}
+
+function testActivateLicense(plan) {
+  if (!currentSession) return;
+  LicenseManager.activate(currentSession.tenantId, plan, 'manual');
+  addWebhookLog('[Manual] License activated: ' + plan + ' for ' + currentSession.email);
+  toast('Licença ativada: ' + plan, 'success');
+}
+
+function testExpireLicense() {
+  if (!currentSession) return;
+  LicenseManager.expire(currentSession.tenantId);
+  addWebhookLog('[Manual] License expired for ' + currentSession.email);
+  toast('Licença expirada.', 'warning');
+}
+
+// ============================================================
+// LAYER 5 — EXCEL EXPORT via SheetJS
+// ============================================================
+const ExportManager = {
+  // Helper: make a SheetJS cell
+  makeCell(value, type, style) {
+    const cell = { v: value, t: type || (typeof value === 'number' ? 'n' : 's') };
+    if (style) cell.s = style;
+    if (type === 'n' && style && style.numFmt) cell.z = style.numFmt;
+    return cell;
+  },
+
+  // Apply bold + gray header style to first row of a worksheet
+  styleHeader(ws, numCols) {
+    const headerStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: '4F46E5' } },
+      alignment: { horizontal: 'center' },
+    };
+    for (let c = 0; c < numCols; c++) {
+      const addr = XLSX.utils.encode_cell({ r: 0, c });
+      if (ws[addr]) ws[addr].s = headerStyle;
+    }
+  },
+
+  fmtNum(v) { return Number(v) || 0; },
+
+  storeName() {
+    return currentSession ? currentSession.storeName.replace(/[^a-zA-Z0-9]/g,'_') : 'JSMStore';
+  },
+
+  today() { return new Date().toISOString().split('T')[0]; },
+
+  downloadWb(wb, module) {
+    XLSX.writeFile(wb, `JSMStore_${module}_${this.storeName()}_${this.today()}.xlsx`);
+  },
+
+  // ── Export Sales ──────────────────────────────────────────
+  exportSales() {
+    const wb = XLSX.utils.book_new();
+    const payLabels = { dinheiro:'Dinheiro', cartao_credito:'Crédito', cartao_debito:'Débito', pix:'PIX' };
+
+    // Sheet 1: Vendas
+    const data1 = [['Data','Produto','Cliente','Qtd','Preço Unit.','Total','Pagamento']];
+    state.sales.forEach(s => {
+      data1.push([
+        s.date.split('T')[0],
+        s.productName,
+        s.customerName || '—',
+        s.qty,
+        this.fmtNum(s.price),
+        this.fmtNum(s.total),
+        payLabels[s.payment] || s.payment,
+      ]);
+    });
+    const ws1 = XLSX.utils.aoa_to_sheet(data1);
+    this.styleHeader(ws1, 7);
+    XLSX.utils.book_append_sheet(wb, ws1, 'Vendas');
+
+    // Sheet 2: Resumo
+    const total = state.sales.reduce((a,s) => a + s.total, 0);
+    const data2 = [
+      ['Resumo de Vendas',''],
+      ['Total de Vendas', state.sales.length],
+      ['Receita Total (R$)', this.fmtNum(total)],
+      ['Ticket Médio (R$)', state.sales.length ? this.fmtNum(total / state.sales.length) : 0],
+    ];
+    const ws2 = XLSX.utils.aoa_to_sheet(data2);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Resumo');
+    this.downloadWb(wb, 'Vendas');
+    toast('Excel de Vendas exportado!', 'success');
+  },
+
+  // ── Export Products ───────────────────────────────────────
+  exportProducts() {
+    const wb = XLSX.utils.book_new();
+
+    const data1 = [['Nome','Categoria','Preço (R$)','Estoque','Estoque Mínimo','Descrição']];
+    state.products.forEach(p => {
+      data1.push([p.name, p.category||'—', this.fmtNum(p.price), p.stock, p.minStock||5, p.desc||'']);
+    });
+    const ws1 = XLSX.utils.aoa_to_sheet(data1);
+    this.styleHeader(ws1, 6);
+    XLSX.utils.book_append_sheet(wb, ws1, 'Estoque Atual');
+
+    const data2 = [['Movimentações de Estoque'],['(Nenhum histórico disponível nesta versão)']];
+    const ws2 = XLSX.utils.aoa_to_sheet(data2);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Movimentações');
+
+    this.downloadWb(wb, 'Produtos');
+    toast('Excel de Produtos exportado!', 'success');
+  },
+
+  // ── Export Customers ──────────────────────────────────────
+  exportCustomers() {
+    const wb = XLSX.utils.book_new();
+
+    const data1 = [['Nome','Email','Telefone','Endereço','Total Compras','Total Gasto (R$)']];
+    state.customers.forEach(c => {
+      const sales = state.sales.filter(s => s.customerId === c.id);
+      const total = sales.reduce((a,s) => a + s.total, 0);
+      data1.push([c.name, c.email||'—', c.phone||'—', c.address||'—', sales.length, this.fmtNum(total)]);
+    });
+    const ws1 = XLSX.utils.aoa_to_sheet(data1);
+    this.styleHeader(ws1, 6);
+    XLSX.utils.book_append_sheet(wb, ws1, 'Clientes');
+
+    // Ranking by spend
+    const ranked = state.customers.map(c => {
+      const sales = state.sales.filter(s => s.customerId === c.id);
+      const total = sales.reduce((a,s) => a + s.total, 0);
+      return { name: c.name, total, count: sales.length };
+    }).sort((a,b) => b.total - a.total);
+
+    const data2 = [['#','Nome','Total Gasto (R$)','Nº Compras']];
+    ranked.forEach((r,i) => data2.push([i+1, r.name, this.fmtNum(r.total), r.count]));
+    const ws2 = XLSX.utils.aoa_to_sheet(data2);
+    this.styleHeader(ws2, 4);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Ranking');
+
+    this.downloadWb(wb, 'Clientes');
+    toast('Excel de Clientes exportado!', 'success');
+  },
+
+  // ── Export Finance ────────────────────────────────────────
+  exportFinance() {
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Fluxo de Caixa
+    const data1 = [['Data','Descrição','Tipo','Categoria','Valor (R$)']];
+    [...state.finances].sort((a,b) => a.date.localeCompare(b.date)).forEach(f => {
+      data1.push([f.date, f.desc, f.type, f.category, this.fmtNum(f.type==='receita' ? f.value : -f.value)]);
+    });
+    const ws1 = XLSX.utils.aoa_to_sheet(data1);
+    this.styleHeader(ws1, 5);
+    XLSX.utils.book_append_sheet(wb, ws1, 'Fluxo Caixa');
+
+    // Sheet 2: DRE Simplificado
+    const revenue  = state.finances.filter(f => f.type==='receita').reduce((a,f)=>a+f.value,0);
+    const expenses = state.finances.filter(f => f.type==='despesa').reduce((a,f)=>a+f.value,0);
+    const profit   = revenue - expenses;
+    const margin   = revenue > 0 ? (profit / revenue * 100).toFixed(1) + '%' : '0%';
+    const data2 = [
+      ['DRE Simplificado','Valor (R$)'],
+      ['Receita Bruta', this.fmtNum(revenue)],
+      ['(-) Despesas',  this.fmtNum(expenses)],
+      ['Lucro Líquido', this.fmtNum(profit)],
+      ['Margem Líquida', margin],
+    ];
+    const ws2 = XLSX.utils.aoa_to_sheet(data2);
+    this.styleHeader(ws2, 2);
+    XLSX.utils.book_append_sheet(wb, ws2, 'DRE Simplificado');
+
+    // Sheet 3: Projeção 6 meses (linear)
+    const monthAvgRev = revenue / Math.max(1, 12);
+    const monthAvgExp = expenses / Math.max(1, 12);
+    const data3 = [['Mês','Receita Projetada (R$)','Despesa Projetada (R$)','Lucro Projetado (R$)']];
+    for (let i = 1; i <= 6; i++) {
+      const d = new Date();
+      d.setMonth(d.getMonth() + i);
+      const label = d.toLocaleDateString('pt-BR', { month:'short', year:'numeric' });
+      data3.push([label, this.fmtNum(monthAvgRev*i), this.fmtNum(monthAvgExp*i), this.fmtNum((monthAvgRev-monthAvgExp)*i)]);
+    }
+    const ws3 = XLSX.utils.aoa_to_sheet(data3);
+    this.styleHeader(ws3, 4);
+    XLSX.utils.book_append_sheet(wb, ws3, 'Projeção 6M');
+
+    this.downloadWb(wb, 'Financeiro');
+    toast('Excel Financeiro exportado!', 'success');
+  },
+
+  // ── Export Admin ──────────────────────────────────────────
+  exportAdmin() {
+    if (!currentAdminSession) { toast('Acesso negado.', 'error'); return; }
+    const wb = XLSX.utils.book_new();
+    const reg = getRegistry();
+    const now = new Date();
+
+    // Sheet 1: Clientes SaaS
+    const data1 = [['Nome','Email','Loja','Status','Plano','Cadastro','Expira','Gateway']];
+    reg.forEach(t => {
+      data1.push([t.name, t.email, t.storeName, t.status, t.plan,
+        new Date(t.registeredAt).toLocaleDateString('pt-BR'),
+        new Date(t.expiresAt).toLocaleDateString('pt-BR'),
+        t.gateway || '—']);
+    });
+    const ws1 = XLSX.utils.aoa_to_sheet(data1);
+    this.styleHeader(ws1, 8);
+    XLSX.utils.book_append_sheet(wb, ws1, 'Clientes SaaS');
+
+    // Sheet 2: Receita SaaS (simulated at R$97/mo)
+    const price = { trial7:0, monthly:97, annual:970 };
+    const data2 = [['Tenant','Email','Plano','Receita Est. (R$)','Status']];
+    let totalSaas = 0;
+    reg.forEach(t => {
+      const r = price[t.plan] || 0;
+      totalSaas += (t.status === 'active') ? r : 0;
+      data2.push([t.name, t.email, t.plan, r, t.status]);
+    });
+    data2.push(['TOTAL ATIVO','','','R$'+totalSaas.toFixed(2),'']);
+    const ws2 = XLSX.utils.aoa_to_sheet(data2);
+    this.styleHeader(ws2, 5);
+    XLSX.utils.book_append_sheet(wb, ws2, 'Receita SaaS');
+
+    // Sheet 3: Resumo Executivo
+    const active   = reg.filter(t => t.status==='active').length;
+    const trial    = reg.filter(t => t.status==='trial').length;
+    const expired  = reg.filter(t => t.status==='expired'||t.status==='inactive').length;
+    const data3 = [
+      ['Resumo Executivo','Valor'],
+      ['Total Tenants', reg.length],
+      ['Ativos', active],
+      ['Em Trial', trial],
+      ['Expirados/Inativos', expired],
+      ['MRR Estimado (R$)', totalSaas],
+      ['Data do Relatório', now.toLocaleDateString('pt-BR')],
+    ];
+    const ws3 = XLSX.utils.aoa_to_sheet(data3);
+    this.styleHeader(ws3, 2);
+    XLSX.utils.book_append_sheet(wb, ws3, 'Resumo Executivo');
+
+    const fname = `JSMStore_Admin_${this.today()}.xlsx`;
+    XLSX.writeFile(wb, fname);
+    toast('Excel Admin exportado!', 'success');
+  },
+};
+
+// ============================================================
+// APP INIT
+// ============================================================
 function initApp() {
   loadState();
+
+  // Update sidebar with session info
+  if (currentSession) {
+    document.getElementById('sidebar-store-name').textContent = currentSession.storeName || 'JSM Store';
+    document.getElementById('sidebar-user-name').textContent  = currentSession.name || 'Usuário';
+    document.getElementById('sidebar-email-display').textContent = currentSession.email || '';
+    const avatar = (currentSession.name || 'U').charAt(0).toUpperCase();
+    document.getElementById('sidebar-avatar').textContent = avatar;
+  }
+
   document.getElementById('current-date').textContent = new Date().toLocaleDateString('pt-BR', {
     weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
   });
-  // Set default month filter
+
   const now = new Date();
-  document.getElementById('sales-filter-month').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  // Default finance date
-  document.getElementById('finance-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('sales-filter-month').value =
+    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('finance-date').value = now.toISOString().split('T')[0];
+
   navigateTo('dashboard');
   checkLowStock();
+  updateNotifBadge();
 }
 
-// ── Navigation ─────────────────────────────────────────────────
+// ============================================================
+// NAVIGATION
+// ============================================================
 const PAGE_TITLES = {
-  dashboard: 'Dashboard', products: 'Produtos', customers: 'Clientes',
-  sales: 'Vendas', finance: 'Financeiro', backup: 'Backup',
+  dashboard:'Dashboard', products:'Produtos', customers:'Clientes',
+  sales:'Vendas', finance:'Financeiro', backup:'Backup',
 };
 
 function navigateTo(page) {
   document.querySelectorAll('[id^="page-"]').forEach(el => el.classList.add('hidden'));
-  document.getElementById('page-' + page).classList.remove('hidden');
-  document.getElementById('page-title').textContent = PAGE_TITLES[page];
+  const pg = document.getElementById('page-' + page);
+  if (pg) pg.classList.remove('hidden');
+  document.getElementById('page-title').textContent = PAGE_TITLES[page] || page;
   document.querySelectorAll('.sidebar-link').forEach(el => {
     el.classList.toggle('active', el.dataset.page === page);
   });
   if (page === 'dashboard') renderDashboard();
-  if (page === 'products') renderProducts();
+  if (page === 'products')  renderProducts();
   if (page === 'customers') renderCustomers();
-  if (page === 'sales') { populateSaleSelects(); renderSales(); }
-  if (page === 'finance') renderFinance();
-  if (page === 'backup') renderBackupInfo();
+  if (page === 'sales')     { populateSaleSelects(); renderSales(); }
+  if (page === 'finance')   renderFinance();
+  if (page === 'backup')    renderBackupInfo();
 }
 
 document.querySelectorAll('.sidebar-link').forEach(el => {
   el.addEventListener('click', () => navigateTo(el.dataset.page));
 });
 
-// ── Helpers ────────────────────────────────────────────────────
+// ============================================================
+// HELPERS
+// ============================================================
 function fmt(val) {
-  return 'R$ ' + Number(val).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return 'R$ ' + Number(val).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
 }
-
 function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('pt-BR');
 }
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
-// ── Toast ──────────────────────────────────────────────────────
+// ============================================================
+// TOAST
+// ============================================================
 function toast(msg, type = 'success') {
-  const colors = { success: 'bg-emerald-500', error: 'bg-red-500', info: 'bg-indigo-500', warning: 'bg-yellow-500' };
+  const colors = { success:'background:#10b981;', error:'background:#ef4444;', info:'background:#6366f1;', warning:'background:#f59e0b;' };
   const el = document.createElement('div');
-  el.className = `toast pointer-events-auto ${colors[type]} text-white px-4 py-3 rounded-xl shadow-lg text-sm max-w-xs`;
+  el.className = 'toast pointer-events-auto text-white px-4 py-3 rounded-xl shadow-lg text-sm max-w-xs';
+  el.style.cssText = colors[type] || colors.info;
   el.textContent = msg;
   document.getElementById('toast-container').appendChild(el);
   setTimeout(() => el.remove(), 3100);
-
   addNotification(msg, type);
 }
 
-// ── Notifications ──────────────────────────────────────────────
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
 function addNotification(msg, type = 'info') {
+  if (!state) return;
+  if (!state.notifications) state.notifications = [];
   state.notifications.unshift({ id: uid(), msg, type, time: new Date().toISOString() });
   if (state.notifications.length > 30) state.notifications.pop();
   updateNotifBadge();
@@ -613,29 +1665,31 @@ function addNotification(msg, type = 'info') {
 
 function updateNotifBadge() {
   const badge = document.getElementById('notif-badge');
-  const count = state.notifications.length;
+  if (!badge) return;
+  const count = (state.notifications || []).length;
   badge.textContent = count > 9 ? '9+' : count;
-  badge.classList.toggle('hidden', count === 0);
-  badge.classList.toggle('flex', count > 0);
+  if (count === 0) { badge.style.display = 'none'; }
+  else { badge.style.display = 'flex'; }
 }
 
 function toggleNotifications() {
-  document.getElementById('notif-panel').classList.toggle('hidden');
+  const panel = document.getElementById('notif-panel');
+  panel.classList.toggle('hidden');
   renderNotifications();
 }
 
 function renderNotifications() {
   const list = document.getElementById('notif-list');
-  if (!state.notifications.length) {
+  const notifs = state.notifications || [];
+  if (!notifs.length) {
     list.innerHTML = '<p class="p-4 text-sm text-gray-400 text-center">Nenhuma notificação</p>';
     return;
   }
-  list.innerHTML = state.notifications.map(n => `
+  list.innerHTML = notifs.map(n => `
     <div class="p-3">
-      <p class="text-sm text-gray-700">${n.msg}</p>
+      <p class="text-sm text-gray-700">${escHtml(n.msg)}</p>
       <p class="text-xs text-gray-400 mt-0.5">${fmtDate(n.time)}</p>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 function clearNotifications() {
@@ -647,78 +1701,82 @@ function clearNotifications() {
 
 document.addEventListener('click', e => {
   const panel = document.getElementById('notif-panel');
+  if (!panel) return;
   if (!panel.contains(e.target) && !e.target.closest('button[onclick="toggleNotifications()"]')) {
     panel.classList.add('hidden');
   }
 });
 
-// ── Modals ─────────────────────────────────────────────────────
-function openModal(id) {
-  document.getElementById(id).classList.remove('hidden');
-}
-function closeModal(id) {
-  document.getElementById(id).classList.add('hidden');
-}
+// ============================================================
+// MODALS
+// ============================================================
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-function confirm(title, message, icon, onOk) {
-  document.getElementById('confirm-title').textContent = title;
+function showConfirm(title, message, icon, onOk) {
+  document.getElementById('confirm-title').textContent   = title;
   document.getElementById('confirm-message').textContent = message;
-  document.getElementById('confirm-icon').textContent = icon;
+  document.getElementById('confirm-icon').textContent    = icon;
   const btn = document.getElementById('confirm-ok');
   btn.onclick = () => { onOk(); closeModal('modal-confirm'); };
   openModal('modal-confirm');
 }
 
-// ── PRODUCTS ───────────────────────────────────────────────────
+// Legacy alias
+function confirm(title, message, icon, onOk) { showConfirm(title, message, icon, onOk); }
+
+// ============================================================
+// PRODUCTS
+// ============================================================
 function renderProducts() {
   const q = (document.getElementById('product-search').value || '').toLowerCase();
   const rows = state.products
-    .filter(p => p.name.toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q))
+    .filter(p => p.name.toLowerCase().includes(q) || (p.category||'').toLowerCase().includes(q))
     .map(p => {
-      const stockColor = p.stock <= (p.minStock || 5)
-        ? 'badge bg-red-100 text-red-700' : 'badge bg-emerald-100 text-emerald-700';
-      return `
-        <tr class="table-row">
-          <td class="py-2 pr-4 font-medium">${p.name}</td>
-          <td class="py-2 pr-4 text-gray-500">${p.category || '—'}</td>
-          <td class="py-2 pr-4">${fmt(p.price)}</td>
-          <td class="py-2 pr-4"><span class="${stockColor}">${p.stock}</span></td>
-          <td class="py-2">
-            <button onclick="editProduct('${p.id}')" class="text-indigo-600 hover:underline text-xs mr-2">Editar</button>
-            <button onclick="deleteProduct('${p.id}')" class="text-red-500 hover:underline text-xs">Excluir</button>
-          </td>
-        </tr>`;
+      const isLow = p.stock <= (p.minStock||5);
+      const stockBadge = isLow
+        ? 'background:#fee2e2;color:#991b1b;'
+        : 'background:#d1fae5;color:#065f46;';
+      return `<tr class="table-row">
+        <td class="py-2 pr-4 font-medium">${escHtml(p.name)}</td>
+        <td class="py-2 pr-4 text-gray-500">${escHtml(p.category||'—')}</td>
+        <td class="py-2 pr-4">${fmt(p.price)}</td>
+        <td class="py-2 pr-4"><span class="badge" style="${stockBadge}">${p.stock}</span></td>
+        <td class="py-2">
+          <button onclick="editProduct('${p.id}')" class="text-indigo-600 hover:underline text-xs mr-2">Editar</button>
+          <button onclick="deleteProduct('${p.id}')" class="text-red-500 hover:underline text-xs">Excluir</button>
+        </td>
+      </tr>`;
     }).join('');
-  document.getElementById('products-tbody').innerHTML = rows || '<tr><td colspan="5" class="py-4 text-center text-gray-400">Nenhum produto cadastrado.</td></tr>';
+  document.getElementById('products-tbody').innerHTML = rows ||
+    '<tr><td colspan="5" class="py-4 text-center text-gray-400">Nenhum produto cadastrado.</td></tr>';
 }
 
 function openProductModal(p = null) {
-  document.getElementById('product-id').value = p ? p.id : '';
-  document.getElementById('product-name').value = p ? p.name : '';
-  document.getElementById('product-category').value = p ? (p.category || '') : '';
-  document.getElementById('product-price').value = p ? p.price : '';
-  document.getElementById('product-stock').value = p ? p.stock : '';
-  document.getElementById('product-min-stock').value = p ? (p.minStock || 5) : 5;
-  document.getElementById('product-desc').value = p ? (p.desc || '') : '';
+  document.getElementById('product-id').value        = p ? p.id : '';
+  document.getElementById('product-name').value      = p ? p.name : '';
+  document.getElementById('product-category').value  = p ? (p.category||'') : '';
+  document.getElementById('product-price').value     = p ? p.price : '';
+  document.getElementById('product-stock').value     = p ? p.stock : '';
+  document.getElementById('product-min-stock').value = p ? (p.minStock||5) : 5;
+  document.getElementById('product-desc').value      = p ? (p.desc||'') : '';
   document.getElementById('modal-product-title').textContent = p ? 'Editar Produto' : 'Novo Produto';
   openModal('modal-product');
 }
 
-function editProduct(id) {
-  openProductModal(state.products.find(p => p.id === id));
-}
+function editProduct(id) { openProductModal(state.products.find(p => p.id === id)); }
 
 function saveProduct(e) {
   e.preventDefault();
   const id = document.getElementById('product-id').value;
   const data = {
     id: id || uid(),
-    name: document.getElementById('product-name').value.trim(),
+    name:     document.getElementById('product-name').value.trim(),
     category: document.getElementById('product-category').value.trim(),
-    price: parseFloat(document.getElementById('product-price').value),
-    stock: parseInt(document.getElementById('product-stock').value),
+    price:    parseFloat(document.getElementById('product-price').value),
+    stock:    parseInt(document.getElementById('product-stock').value),
     minStock: parseInt(document.getElementById('product-min-stock').value) || 5,
-    desc: document.getElementById('product-desc').value.trim(),
+    desc:     document.getElementById('product-desc').value.trim(),
   };
   if (id) {
     state.products = state.products.map(p => p.id === id ? data : p);
@@ -735,7 +1793,7 @@ function saveProduct(e) {
 
 function deleteProduct(id) {
   const p = state.products.find(x => x.id === id);
-  confirm('Excluir Produto', `Deseja excluir "${p.name}"?`, '🗑️', () => {
+  showConfirm('Excluir Produto', `Deseja excluir "${p.name}"?`, '🗑️', () => {
     state.products = state.products.filter(x => x.id !== id);
     saveState();
     renderProducts();
@@ -743,55 +1801,50 @@ function deleteProduct(id) {
   });
 }
 
-document.getElementById('modal-product').querySelector('[onclick="openModal(\'modal-product\')"]');
-document.querySelectorAll('[onclick="openModal(\'modal-product\')"]').forEach(b => {
-  b.addEventListener('click', () => openProductModal());
-});
-
-// ── CUSTOMERS ──────────────────────────────────────────────────
+// ============================================================
+// CUSTOMERS
+// ============================================================
 function renderCustomers() {
   const q = (document.getElementById('customer-search').value || '').toLowerCase();
   const rows = state.customers
-    .filter(c => c.name.toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q))
+    .filter(c => c.name.toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q))
     .map(c => {
       const purchases = state.sales.filter(s => s.customerId === c.id).length;
-      return `
-        <tr class="table-row">
-          <td class="py-2 pr-4 font-medium">${c.name}</td>
-          <td class="py-2 pr-4 text-gray-500">${c.email || '—'}</td>
-          <td class="py-2 pr-4 text-gray-500">${c.phone || '—'}</td>
-          <td class="py-2 pr-4">${purchases}</td>
-          <td class="py-2">
-            <button onclick="editCustomer('${c.id}')" class="text-indigo-600 hover:underline text-xs mr-2">Editar</button>
-            <button onclick="deleteCustomer('${c.id}')" class="text-red-500 hover:underline text-xs">Excluir</button>
-          </td>
-        </tr>`;
+      return `<tr class="table-row">
+        <td class="py-2 pr-4 font-medium">${escHtml(c.name)}</td>
+        <td class="py-2 pr-4 text-gray-500">${escHtml(c.email||'—')}</td>
+        <td class="py-2 pr-4 text-gray-500">${escHtml(c.phone||'—')}</td>
+        <td class="py-2 pr-4">${purchases}</td>
+        <td class="py-2">
+          <button onclick="editCustomer('${c.id}')" class="text-indigo-600 hover:underline text-xs mr-2">Editar</button>
+          <button onclick="deleteCustomer('${c.id}')" class="text-red-500 hover:underline text-xs">Excluir</button>
+        </td>
+      </tr>`;
     }).join('');
-  document.getElementById('customers-tbody').innerHTML = rows || '<tr><td colspan="5" class="py-4 text-center text-gray-400">Nenhum cliente cadastrado.</td></tr>';
+  document.getElementById('customers-tbody').innerHTML = rows ||
+    '<tr><td colspan="5" class="py-4 text-center text-gray-400">Nenhum cliente cadastrado.</td></tr>';
 }
 
 function openCustomerModal(c = null) {
-  document.getElementById('customer-id').value = c ? c.id : '';
-  document.getElementById('customer-name').value = c ? c.name : '';
-  document.getElementById('customer-email').value = c ? (c.email || '') : '';
-  document.getElementById('customer-phone').value = c ? (c.phone || '') : '';
-  document.getElementById('customer-address').value = c ? (c.address || '') : '';
+  document.getElementById('customer-id').value      = c ? c.id : '';
+  document.getElementById('customer-name').value    = c ? c.name : '';
+  document.getElementById('customer-email').value   = c ? (c.email||'') : '';
+  document.getElementById('customer-phone').value   = c ? (c.phone||'') : '';
+  document.getElementById('customer-address').value = c ? (c.address||'') : '';
   document.getElementById('modal-customer-title').textContent = c ? 'Editar Cliente' : 'Novo Cliente';
   openModal('modal-customer');
 }
 
-function editCustomer(id) {
-  openCustomerModal(state.customers.find(c => c.id === id));
-}
+function editCustomer(id) { openCustomerModal(state.customers.find(c => c.id === id)); }
 
 function saveCustomer(e) {
   e.preventDefault();
   const id = document.getElementById('customer-id').value;
   const data = {
-    id: id || uid(),
-    name: document.getElementById('customer-name').value.trim(),
-    email: document.getElementById('customer-email').value.trim(),
-    phone: document.getElementById('customer-phone').value.trim(),
+    id:      id || uid(),
+    name:    document.getElementById('customer-name').value.trim(),
+    email:   document.getElementById('customer-email').value.trim(),
+    phone:   document.getElementById('customer-phone').value.trim(),
     address: document.getElementById('customer-address').value.trim(),
   };
   if (id) {
@@ -808,7 +1861,7 @@ function saveCustomer(e) {
 
 function deleteCustomer(id) {
   const c = state.customers.find(x => x.id === id);
-  confirm('Excluir Cliente', `Deseja excluir "${c.name}"?`, '🗑️', () => {
+  showConfirm('Excluir Cliente', `Deseja excluir "${c.name}"?`, '🗑️', () => {
     state.customers = state.customers.filter(x => x.id !== id);
     saveState();
     renderCustomers();
@@ -816,18 +1869,16 @@ function deleteCustomer(id) {
   });
 }
 
-document.querySelectorAll('[onclick="openModal(\'modal-customer\')"]').forEach(b => {
-  b.addEventListener('click', () => openCustomerModal());
-});
-
-// ── SALES ─────────────────────────────────────────────────────
+// ============================================================
+// SALES
+// ============================================================
 function populateSaleSelects() {
-  const cSel = document.getElementById('sale-customer');
-  const pSel = document.getElementById('sale-product');
-  cSel.innerHTML = '<option value="">Selecionar cliente...</option>' +
-    state.customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  pSel.innerHTML = '<option value="">Selecionar produto...</option>' +
-    state.products.map(p => `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${p.name} (Estoque: ${p.stock})</option>`).join('');
+  document.getElementById('sale-customer').innerHTML =
+    '<option value="">Selecionar cliente...</option>' +
+    state.customers.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+  document.getElementById('sale-product').innerHTML =
+    '<option value="">Selecionar produto...</option>' +
+    state.products.map(p => `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${escHtml(p.name)} (Estoque: ${p.stock})</option>`).join('');
 }
 
 function updateSalePrice() {
@@ -838,20 +1889,20 @@ function updateSalePrice() {
 }
 
 function updateSaleTotal() {
-  const qty = parseFloat(document.getElementById('sale-qty').value) || 0;
+  const qty   = parseFloat(document.getElementById('sale-qty').value)   || 0;
   const price = parseFloat(document.getElementById('sale-price').value) || 0;
   document.getElementById('sale-total').textContent = fmt(qty * price);
 }
 
 function registerSale() {
   const customerId = document.getElementById('sale-customer').value;
-  const productId = document.getElementById('sale-product').value;
-  const qty = parseInt(document.getElementById('sale-qty').value);
-  const price = parseFloat(document.getElementById('sale-price').value);
-  const payment = document.getElementById('sale-payment').value;
+  const productId  = document.getElementById('sale-product').value;
+  const qty        = parseInt(document.getElementById('sale-qty').value);
+  const price      = parseFloat(document.getElementById('sale-price').value);
+  const payment    = document.getElementById('sale-payment').value;
 
-  if (!productId) return toast('Selecione um produto.', 'error');
-  if (!qty || qty < 1) return toast('Quantidade inválida.', 'error');
+  if (!productId)       return toast('Selecione um produto.', 'error');
+  if (!qty || qty < 1)  return toast('Quantidade inválida.', 'error');
   if (!price || price <= 0) return toast('Preço inválido.', 'error');
 
   const product = state.products.find(p => p.id === productId);
@@ -860,12 +1911,11 @@ function registerSale() {
   const sale = {
     id: uid(),
     productId,
-    productName: product.name,
-    customerId: customerId || null,
-    customerName: customerId ? state.customers.find(c => c.id === customerId)?.name : 'Sem cliente',
-    qty,
-    price,
-    total: qty * price,
+    productName:  product.name,
+    customerId:   customerId || null,
+    customerName: customerId ? (state.customers.find(c => c.id === customerId)?.name || 'Sem cliente') : 'Sem cliente',
+    qty, price,
+    total:   qty * price,
     payment,
     date: new Date().toISOString(),
   };
@@ -873,21 +1923,20 @@ function registerSale() {
   state.sales.push(sale);
   product.stock -= qty;
 
-  // Auto-record revenue in finances
   state.finances.push({
-    id: uid(),
-    type: 'receita',
-    desc: `Venda: ${product.name}`,
+    id:       uid(),
+    type:     'receita',
+    desc:     'Venda: ' + product.name,
     category: 'Vendas',
-    value: sale.total,
-    date: new Date().toISOString().split('T')[0],
+    value:    sale.total,
+    date:     new Date().toISOString().split('T')[0],
   });
 
   saveState();
   toast(`Venda registrada! ${fmt(sale.total)}`, 'success');
   renderSales();
   populateSaleSelects();
-  document.getElementById('sale-qty').value = 1;
+  document.getElementById('sale-qty').value   = 1;
   document.getElementById('sale-price').value = '';
   document.getElementById('sale-total').textContent = 'R$ 0,00';
   document.getElementById('sale-product').value = '';
@@ -900,30 +1949,32 @@ function renderSales() {
     ? state.sales.filter(s => s.date.startsWith(filterMonth))
     : state.sales;
   const sorted = [...filtered].reverse();
-  const payLabels = { dinheiro: 'Dinheiro', cartao_credito: 'Crédito', cartao_debito: 'Débito', pix: 'PIX' };
+  const payLabels = { dinheiro:'Dinheiro', cartao_credito:'Crédito', cartao_debito:'Débito', pix:'PIX' };
 
   document.getElementById('sales-tbody').innerHTML = sorted.length
     ? sorted.map(s => `
         <tr class="table-row">
           <td class="py-2 pr-4 text-gray-500 text-xs">${fmtDate(s.date)}</td>
-          <td class="py-2 pr-4 font-medium">${s.productName}</td>
-          <td class="py-2 pr-4 text-gray-500">${s.customerName || '—'}</td>
+          <td class="py-2 pr-4 font-medium">${escHtml(s.productName)}</td>
+          <td class="py-2 pr-4 text-gray-500">${escHtml(s.customerName||'—')}</td>
           <td class="py-2 pr-4 font-semibold text-emerald-700">${fmt(s.total)}</td>
-          <td class="py-2"><span class="badge bg-blue-100 text-blue-700">${payLabels[s.payment] || s.payment}</span></td>
+          <td class="py-2"><span class="badge" style="background:#dbeafe;color:#1e40af;">${payLabels[s.payment]||s.payment}</span></td>
         </tr>`).join('')
     : '<tr><td colspan="5" class="py-4 text-center text-gray-400">Nenhuma venda no período.</td></tr>';
 }
 
-// ── FINANCE ────────────────────────────────────────────────────
+// ============================================================
+// FINANCE
+// ============================================================
 function saveFinance(e) {
   e.preventDefault();
   const data = {
-    id: uid(),
-    type: document.getElementById('finance-type').value,
-    desc: document.getElementById('finance-desc').value.trim(),
+    id:       uid(),
+    type:     document.getElementById('finance-type').value,
+    desc:     document.getElementById('finance-desc').value.trim(),
     category: document.getElementById('finance-cat').value.trim() || 'Geral',
-    value: parseFloat(document.getElementById('finance-value').value),
-    date: document.getElementById('finance-date').value || new Date().toISOString().split('T')[0],
+    value:    parseFloat(document.getElementById('finance-value').value),
+    date:     document.getElementById('finance-date').value || new Date().toISOString().split('T')[0],
   };
   state.finances.push(data);
   saveState();
@@ -935,7 +1986,7 @@ function saveFinance(e) {
 }
 
 function deleteFinance(id) {
-  confirm('Excluir Lançamento', 'Deseja remover este lançamento?', '🗑️', () => {
+  showConfirm('Excluir Lançamento', 'Deseja remover este lançamento?', '🗑️', () => {
     state.finances = state.finances.filter(f => f.id !== id);
     saveState();
     renderFinance();
@@ -944,41 +1995,38 @@ function deleteFinance(id) {
 }
 
 function renderFinance() {
-  const revenue = state.finances.filter(f => f.type === 'receita').reduce((a, f) => a + f.value, 0);
-  const expenses = state.finances.filter(f => f.type === 'despesa').reduce((a, f) => a + f.value, 0);
-  document.getElementById('fin-revenue').textContent = fmt(revenue);
+  const revenue  = state.finances.filter(f => f.type==='receita').reduce((a,f)=>a+f.value,0);
+  const expenses = state.finances.filter(f => f.type==='despesa').reduce((a,f)=>a+f.value,0);
+  document.getElementById('fin-revenue').textContent  = fmt(revenue);
   document.getElementById('fin-expenses').textContent = fmt(expenses);
-  document.getElementById('fin-profit').textContent = fmt(revenue - expenses);
+  document.getElementById('fin-profit').textContent   = fmt(revenue - expenses);
 
-  const sorted = [...state.finances].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted = [...state.finances].sort((a,b) => b.date.localeCompare(a.date));
   document.getElementById('finance-tbody').innerHTML = sorted.length
     ? sorted.map(f => `
         <tr class="table-row">
           <td class="py-2 pr-4 text-xs text-gray-500">${f.date}</td>
-          <td class="py-2 pr-4">${f.desc}</td>
+          <td class="py-2 pr-4">${escHtml(f.desc)}</td>
           <td class="py-2 pr-4">
-            <span class="badge ${f.type === 'receita' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
-              ${f.type}
-            </span>
+            <span class="badge" style="${f.type==='receita'?'background:#d1fae5;color:#065f46;':'background:#fee2e2;color:#991b1b;'}">${f.type}</span>
           </td>
-          <td class="py-2 pr-4 font-semibold ${f.type === 'receita' ? 'text-emerald-700' : 'text-red-600'}">${fmt(f.value)}</td>
+          <td class="py-2 pr-4 font-semibold ${f.type==='receita'?'text-emerald-700':'text-red-600'}">${fmt(f.value)}</td>
           <td class="py-2">
             <button onclick="deleteFinance('${f.id}')" class="text-red-400 hover:text-red-600 text-xs">✕</button>
           </td>
         </tr>`).join('')
     : '<tr><td colspan="5" class="py-4 text-center text-gray-400">Nenhum lançamento.</td></tr>';
 
-  // Summary by category
   const cats = {};
   state.finances.forEach(f => {
-    if (!cats[f.category]) cats[f.category] = { r: 0, d: 0 };
-    if (f.type === 'receita') cats[f.category].r += f.value;
+    if (!cats[f.category]) cats[f.category] = { r:0, d:0 };
+    if (f.type==='receita') cats[f.category].r += f.value;
     else cats[f.category].d += f.value;
   });
   document.getElementById('finance-summary').innerHTML = Object.keys(cats).length
-    ? Object.entries(cats).map(([cat, v]) => `
+    ? Object.entries(cats).map(([cat,v]) => `
         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-          <span class="font-medium text-sm">${cat}</span>
+          <span class="font-medium text-sm">${escHtml(cat)}</span>
           <div class="text-right text-xs">
             ${v.r > 0 ? `<span class="text-emerald-600">+${fmt(v.r)}</span>` : ''}
             ${v.d > 0 ? `<span class="text-red-500 ml-1">-${fmt(v.d)}</span>` : ''}
@@ -987,60 +2035,65 @@ function renderFinance() {
     : '<p class="text-sm text-gray-400">Sem dados.</p>';
 }
 
-// ── DASHBOARD ─────────────────────────────────────────────────
+// ============================================================
+// DASHBOARD
+// ============================================================
 function renderDashboard() {
-  document.getElementById('dash-products').textContent = state.products.length;
+  document.getElementById('dash-products').textContent  = state.products.length;
   document.getElementById('dash-customers').textContent = state.customers.length;
 
   const now = new Date();
   const monthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const monthlySales = state.sales.filter(s => s.date.startsWith(monthKey));
-  const monthlyRevenue = monthlySales.reduce((a, s) => a + s.total, 0);
+  const monthlySales   = state.sales.filter(s => s.date.startsWith(monthKey));
+  const monthlyRevenue = monthlySales.reduce((a,s) => a + s.total, 0);
 
-  document.getElementById('dash-sales').textContent = monthlySales.length;
+  document.getElementById('dash-sales').textContent   = monthlySales.length;
   document.getElementById('dash-revenue').textContent = fmt(monthlyRevenue);
 
-  // Recent sales
   const recentSales = [...state.sales].reverse().slice(0, 5);
   document.getElementById('dash-recent-sales').innerHTML = recentSales.length
     ? recentSales.map(s => `
         <div class="flex justify-between items-center text-sm">
           <div>
-            <p class="font-medium">${s.productName}</p>
-            <p class="text-xs text-gray-400">${s.customerName || '—'} · ${fmtDate(s.date)}</p>
+            <p class="font-medium">${escHtml(s.productName)}</p>
+            <p class="text-xs text-gray-400">${escHtml(s.customerName||'—')} · ${fmtDate(s.date)}</p>
           </div>
           <span class="font-semibold text-emerald-700">${fmt(s.total)}</span>
         </div>`).join('')
     : '<p class="text-sm text-gray-400">Nenhuma venda registrada.</p>';
 
-  // Low stock
-  const low = state.products.filter(p => p.stock <= (p.minStock || 5));
+  const low = state.products.filter(p => p.stock <= (p.minStock||5));
   document.getElementById('dash-low-stock').innerHTML = low.length
     ? low.map(p => `
         <div class="flex justify-between items-center text-sm">
-          <span class="font-medium">${p.name}</span>
-          <span class="badge bg-red-100 text-red-700">Estoque: ${p.stock}</span>
+          <span class="font-medium">${escHtml(p.name)}</span>
+          <span class="badge" style="background:#fee2e2;color:#991b1b;">Estoque: ${p.stock}</span>
         </div>`).join('')
     : '<p class="text-sm text-gray-400">Todos os produtos OK.</p>';
 }
 
-// ── LOW STOCK CHECK ────────────────────────────────────────────
+// ============================================================
+// LOW STOCK CHECK
+// ============================================================
 function checkLowStock() {
-  const low = state.products.filter(p => p.stock <= (p.minStock || 5));
+  if (!state || !state.products) return;
+  const low = state.products.filter(p => p.stock <= (p.minStock||5));
   low.forEach(p => {
-    const already = state.notifications.some(n => n.msg.includes(p.name) && n.msg.includes('estoque'));
+    const already = (state.notifications||[]).some(n => n.msg.includes(p.name) && n.msg.includes('estoque'));
     if (!already) addNotification(`⚠️ Estoque baixo: ${p.name} (${p.stock} restantes)`, 'warning');
   });
   updateNotifBadge();
 }
 
-// ── BACKUP ────────────────────────────────────────────────────
+// ============================================================
+// BACKUP
+// ============================================================
 function exportData() {
   const json = JSON.stringify(state, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
   a.download = `jsm_store_backup_${new Date().toISOString().split('T')[0]}.json`;
   a.click();
   URL.revokeObjectURL(url);
@@ -1054,23 +2107,21 @@ function importData(e) {
   reader.onload = ev => {
     try {
       const imported = JSON.parse(ev.target.result);
-      confirm('Importar Backup', 'Isso substituirá todos os dados atuais. Continuar?', '⚠️', () => {
+      showConfirm('Importar Backup', 'Isso substituirá todos os dados atuais. Continuar?', '⚠️', () => {
         state = { ...state, ...imported };
         saveState();
         toast('Dados importados com sucesso!');
         renderBackupInfo();
       });
-    } catch {
-      toast('Arquivo inválido.', 'error');
-    }
+    } catch { toast('Arquivo inválido.', 'error'); }
   };
   reader.readAsText(file);
   e.target.value = '';
 }
 
 function confirmClearData() {
-  confirm('Limpar Todos os Dados', 'Esta ação é irreversível e removerá produtos, clientes, vendas e finanças.', '⚠️', () => {
-    state = { products: [], customers: [], sales: [], finances: [], notifications: [] };
+  showConfirm('Limpar Todos os Dados', 'Esta ação é irreversível e removerá produtos, clientes, vendas e finanças.', '⚠️', () => {
+    state = { products:[], customers:[], sales:[], finances:[], notifications:[] };
     saveState();
     toast('Todos os dados foram removidos.', 'warning');
     renderBackupInfo();
@@ -1080,15 +2131,30 @@ function confirmClearData() {
 
 function renderBackupInfo() {
   const size = JSON.stringify(state).length;
+  const t = currentSession ? getRegistry().find(x => x.tenantId === currentSession.tenantId) : null;
+  const lic = currentSession ? LicenseManager.checkLicense(currentSession.tenantId) : null;
   document.getElementById('backup-info').innerHTML = `
     <div class="flex justify-between"><span>Produtos:</span><strong>${state.products.length}</strong></div>
     <div class="flex justify-between"><span>Clientes:</span><strong>${state.customers.length}</strong></div>
     <div class="flex justify-between"><span>Vendas:</span><strong>${state.sales.length}</strong></div>
     <div class="flex justify-between"><span>Finanças:</span><strong>${state.finances.length}</strong></div>
-    <div class="flex justify-between"><span>Tamanho:</span><strong>${(size / 1024).toFixed(1)} KB</strong></div>
+    <div class="flex justify-between"><span>Tamanho:</span><strong>${(size/1024).toFixed(1)} KB</strong></div>
+    ${t ? `<div class="flex justify-between"><span>Plano:</span><strong>${t.plan}</strong></div>` : ''}
+    ${lic ? `<div class="flex justify-between"><span>Licença:</span><strong>${lic.status} (${lic.daysLeft}d)</strong></div>` : ''}
+    <div class="flex justify-between"><span>Versão:</span><strong>v86</strong></div>
     <div class="flex justify-between"><span>Última atualização:</span><strong>${new Date().toLocaleTimeString('pt-BR')}</strong></div>
   `;
 }
+
+// ============================================================
+// BOOT — DOMContentLoaded
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Initially hide everything
+  document.querySelectorAll('.screen').forEach(s => { s.style.display = 'none'; });
+  document.getElementById('app').style.display = 'none';
+  authGuard();
+});
 </script>
 </body>
 </html>
