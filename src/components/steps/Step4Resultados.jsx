@@ -1,4 +1,7 @@
-import { fmtNumber, fmtPct, fmtKg, fmtCm, fmtKcal } from '../../utils/format.js';
+import { useState } from 'react';
+import { fmtNumber, fmtPct, fmtKg, fmtKcal } from '../../utils/format.js';
+import StepFC from './StepFC.jsx';
+import StepVO2 from './StepVO2.jsx';
 
 const NIVEL_BADGE = {
   verde: 'jsm-badge-green',
@@ -19,7 +22,7 @@ function RiscoLinha({ label, dado }) {
   );
 }
 
-export default function Step4Resultados({ result, onBack, onNext }) {
+function ComposicaoTab({ result }) {
   const {
     protocolResults, pctGMedio, pctGMin, pctGMax, dispersao,
     massaGorda, massaMagra, massaMuscular, imc, imcClass,
@@ -152,6 +155,59 @@ export default function Step4Resultados({ result, onBack, onNext }) {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+const ABAS = [
+  { id: 'composicao', label: 'Composição corporal' },
+  { id: 'fc', label: 'Frequência Cardíaca' },
+  { id: 'vo2', label: 'VO2máx' },
+];
+
+export default function Step4Resultados({ result, identificacao, populacao, onFcResultChange, onVo2ResultChange, onBack, onNext }) {
+  const [aba, setAba] = useState('composicao');
+  const riscoElevado = result.risco?.aplicavel && [result.risco.cintura, result.risco.rcq, result.risco.rcest]
+    .filter(Boolean)
+    .some((r) => r.nivel === 'vermelho');
+
+  return (
+    <div className="space-y-6">
+      <div className="flex gap-2 flex-wrap">
+        {ABAS.map((a) => (
+          <button
+            key={a.id}
+            className={aba === a.id ? 'jsm-btn-primary' : 'jsm-btn-secondary'}
+            onClick={() => setAba(a.id)}
+          >
+            {a.label}
+          </button>
+        ))}
+      </div>
+
+      {aba === 'composicao' && <ComposicaoTab result={result} />}
+
+      {aba === 'fc' && (
+        <StepFC
+          idade={Number(identificacao.idade)}
+          sexo={identificacao.sexo}
+          objetivo={identificacao.objetivo}
+          populacao={populacao}
+          riscoElevado={riscoElevado}
+          onResultChange={onFcResultChange}
+        />
+      )}
+
+      {aba === 'vo2' && (
+        <StepVO2
+          idade={Number(identificacao.idade)}
+          sexo={identificacao.sexo}
+          peso={Number(identificacao.peso)}
+          populacao={populacao}
+          riscoElevado={riscoElevado}
+          onResultChange={onVo2ResultChange}
+        />
       )}
 
       <div className="flex justify-between">

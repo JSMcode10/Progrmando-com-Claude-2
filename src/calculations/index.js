@@ -7,6 +7,8 @@ export * from './muscleMass.js';
 export * from './classification.js';
 export * from './recommendations.js';
 export * from './protocolMeta.js';
+export * from './heartRate.js';
+export * from './vo2max.js';
 
 import * as density from './density.js';
 

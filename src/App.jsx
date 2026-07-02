@@ -6,10 +6,14 @@ import Step2Protocolo from './components/steps/Step2Protocolo.jsx';
 import Step3Dados from './components/steps/Step3Dados.jsx';
 import Step4Resultados from './components/steps/Step4Resultados.jsx';
 import Step5Orientacao from './components/steps/Step5Orientacao.jsx';
-import { useAssessmentHistory } from './hooks/useAssessmentHistory.js';
+import LoginForm from './components/auth/LoginForm.jsx';
+import AlunosList from './components/alunos/AlunosList.jsx';
+import FichaAluno from './components/alunos/FichaAluno.jsx';
+import { useAuth } from './hooks/useAuth.js';
 import { computeAssessment } from './utils/computeAssessment.js';
 import { gerarOrientacao } from './calculations/index.js';
-import { fmtPct } from './utils/format.js';
+import { calcularIdade } from './utils/idade.js';
+import { salvarAvaliacao } from './lib/db.js';
 
 const initialIdentificacao = {
   nome: '', sexo: '', idade: '', peso: '', alturaCm: '',
@@ -17,21 +21,25 @@ const initialIdentificacao = {
 };
 
 export default function App() {
+  const { user, loading, signIn, signUp, signOut, supabaseConfigured } = useAuth();
+
+  const [view, setView] = useState('alunos'); // 'alunos' | 'ficha' | 'avaliacao'
+  const [alunoAtual, setAlunoAtual] = useState(null);
+
   const [step, setStep] = useState(1);
   const [identificacao, setIdentificacao] = useState(initialIdentificacao);
   const [populacao, setPopulacao] = useState(null);
   const [protocolosSelecionados, setProtocolosSelecionados] = useState([]);
   const [dobras, setDobras] = useState({});
   const [circunferencias, setCircunferencias] = useState({});
-  const [mostrarHistorico, setMostrarHistorico] = useState(false);
-
-  const { historico, salvarAvaliacao, removerAvaliacao } = useAssessmentHistory();
+  const [fcResult, setFcResult] = useState(null);
+  const [vo2Result, setVo2Result] = useState(null);
 
   const result = useMemo(() => {
     if (step < 4 || protocolosSelecionados.length === 0) return null;
     try {
       return computeAssessment({ identificacao, populacao, protocolosSelecionados, dobras, circunferencias });
-    } catch (e) {
+    } catch {
       return null;
     }
   }, [step, identificacao, populacao, protocolosSelecionados, dobras, circunferencias]);
@@ -47,14 +55,44 @@ export default function App() {
     });
   }, [result, populacao, identificacao.sexo, identificacao.objetivo]);
 
-  const novaAvaliacao = () => {
+  const iniciarNovaAvaliacao = (aluno) => {
+    setAlunoAtual(aluno);
     setStep(1);
-    setIdentificacao(initialIdentificacao);
+    setIdentificacao({
+      ...initialIdentificacao,
+      nome: aluno.nome,
+      sexo: aluno.sexo || '',
+      idade: calcularIdade(aluno.data_nascimento) ?? '',
+      objetivo: aluno.objetivo || 'manter',
+    });
     setPopulacao(null);
     setProtocolosSelecionados([]);
     setDobras({});
     setCircunferencias({});
+    setFcResult(null);
+    setVo2Result(null);
+    setView('avaliacao');
   };
+
+  const handleSalvarAvaliacao = async ({ lead }) => {
+    const payload = {
+      data_avaliacao: new Date().toISOString().slice(0, 10),
+      populacao,
+      protocolos: protocolosSelecionados,
+      entradas: { identificacao, dobras, circunferencias },
+      resultado_completo: { composicao: result, fc: fcResult, vo2: vo2Result, lead },
+    };
+    await salvarAvaliacao(alunoAtual.id, payload);
+    setView('ficha');
+  };
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center jsm-label">Carregando…</div>;
+  }
+
+  if (supabaseConfigured && !user) {
+    return <LoginForm onSignIn={signIn} onSignUp={signUp} supabaseConfigured={supabaseConfigured} />;
+  }
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -64,36 +102,31 @@ export default function App() {
           <p className="jsm-label text-sm">Avaliação física e composição corporal multiprotocolo</p>
         </div>
         <div className="flex gap-2">
-          <button className="jsm-btn-secondary" onClick={() => setMostrarHistorico((v) => !v)}>
-            {mostrarHistorico ? 'Fechar histórico' : `Histórico (${historico.length})`}
-          </button>
-          <button className="jsm-btn-secondary" onClick={novaAvaliacao}>Nova avaliação</button>
+          {view !== 'alunos' && (
+            <button className="jsm-btn-secondary" onClick={() => setView('alunos')}>Meus alunos</button>
+          )}
+          {supabaseConfigured && user && (
+            <button className="jsm-btn-secondary" onClick={signOut}>Sair</button>
+          )}
         </div>
       </header>
 
       <div className="max-w-5xl mx-auto">
         <Disclaimer />
 
-        {mostrarHistorico ? (
-          <div className="jsm-card">
-            <h2 className="text-xl mb-4">Histórico de avaliações</h2>
-            {historico.length === 0 && <p className="jsm-label text-sm">Nenhuma avaliação salva ainda.</p>}
-            <div className="space-y-2">
-              {historico.map((a) => (
-                <div key={a.id} className="flex items-center justify-between bg-black/20 rounded-lg p-3">
-                  <div>
-                    <div className="font-semibold text-sm">{a.identificacao?.nome || 'Sem nome'}</div>
-                    <div className="jsm-label text-xs">
-                      {new Date(a.criadoEm).toLocaleString('pt-BR')} · %G médio {fmtPct(a.result?.pctGMedio)}
-                    </div>
-                  </div>
-                  <button className="jsm-btn-secondary" onClick={() => removerAvaliacao(a.id)}>Remover</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
+        {view === 'alunos' && (
+          <AlunosList onSelecionar={(aluno) => { setAlunoAtual(aluno); setView('ficha'); }} />
+        )}
+
+        {view === 'ficha' && alunoAtual && (
+          <FichaAluno aluno={alunoAtual} onVoltar={() => setView('alunos')} onNovaAvaliacao={iniciarNovaAvaliacao} />
+        )}
+
+        {view === 'avaliacao' && alunoAtual && (
           <>
+            <button className="jsm-label text-sm underline mb-4 block" onClick={() => setView('ficha')}>
+              ← Voltar para a ficha de {alunoAtual.nome}
+            </button>
             <StepIndicator current={step} />
 
             {step === 1 && (
@@ -130,7 +163,15 @@ export default function App() {
             )}
 
             {step === 4 && result && (
-              <Step4Resultados result={result} onBack={() => setStep(3)} onNext={() => setStep(5)} />
+              <Step4Resultados
+                result={result}
+                identificacao={identificacao}
+                populacao={populacao}
+                onFcResultChange={setFcResult}
+                onVo2ResultChange={setVo2Result}
+                onBack={() => setStep(3)}
+                onNext={() => setStep(5)}
+              />
             )}
 
             {step === 5 && result && orientacao && (
@@ -139,10 +180,7 @@ export default function App() {
                 result={result}
                 orientacao={orientacao}
                 onBack={() => setStep(4)}
-                onSalvar={(payload) => {
-                  salvarAvaliacao(payload);
-                  setMostrarHistorico(true);
-                }}
+                onSalvar={handleSalvarAvaliacao}
               />
             )}
           </>

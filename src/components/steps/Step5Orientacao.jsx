@@ -11,6 +11,15 @@ export default function Step5Orientacao({ identificacao, result, orientacao, onB
   const [logoDataUrl, setLogoDataUrl] = useState(null);
   const [ctaText, setCtaText] = useState('Agende sua reavaliação — JSM Personal');
   const [exportando, setExportando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [salvo, setSalvo] = useState(false);
+
+  const handleSalvar = async () => {
+    setSalvando(true);
+    await onSalvar({ identificacao, result, lead: { nome: leadNome, whatsapp: leadWhatsapp } });
+    setSalvando(false);
+    setSalvo(true);
+  };
 
   const onLogoUpload = (e) => {
     const file = e.target.files?.[0];
@@ -95,13 +104,13 @@ export default function Step5Orientacao({ identificacao, result, orientacao, onB
             <a className="jsm-btn-secondary" href={whatsappLink} target="_blank" rel="noreferrer">
               Enviar avaliação no WhatsApp
             </a>
-            <button
-              className="jsm-btn-secondary"
-              onClick={() => onSalvar({ identificacao, result, lead: { nome: leadNome, whatsapp: leadWhatsapp } })}
-            >
-              Salvar no histórico
+            <button className="jsm-btn-secondary" onClick={handleSalvar} disabled={salvando || salvo}>
+              {salvo ? 'Salvo ✓' : salvando ? 'Salvando…' : 'Salvar na ficha do aluno'}
             </button>
           </div>
+          {salvo && (
+            <p className="text-emerald-400 text-sm mb-4">Avaliação salva na ficha do aluno.</p>
+          )}
 
           <div className="overflow-x-auto">
             <ReportView ref={reportRef} identificacao={identificacao} result={result} orientacao={orientacao} logoDataUrl={logoDataUrl} ctaText={ctaText} />
